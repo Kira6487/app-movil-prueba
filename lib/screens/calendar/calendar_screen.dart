@@ -40,7 +40,7 @@ class _CalendarFilters extends StatelessWidget {
                 selected: filter == 'Todos',
                 onSelected: (_) {},
                 label: Text(filter),
-                selectedColor: AppColors.blue.withOpacity(0.22),
+                selectedColor: AppColors.blue.withValues(alpha: 0.22),
                 checkmarkColor: AppColors.blue,
               ),
             ),
@@ -150,7 +150,7 @@ class _SelectedDayList extends StatelessWidget {
             ListTile(
               contentPadding: EdgeInsets.zero,
               leading: CircleAvatar(
-                backgroundColor: item.color.withOpacity(0.16),
+                backgroundColor: item.color.withValues(alpha: 0.16),
                 child: Icon(item.icon, color: item.color),
               ),
               title: Text(item.title),

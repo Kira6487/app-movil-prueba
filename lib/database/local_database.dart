@@ -1,7 +1,11 @@
+import 'app_database.dart';
+
 class LocalDatabase {
-  const LocalDatabase();
+  const LocalDatabase({AppDatabase? database}) : _database = database ?? AppDatabase.instance;
+
+  final AppDatabase _database;
 
   Future<void> initialize() async {
-    // SQLite se conectara aqui en una etapa posterior.
+    await _database.initialize();
   }
 }

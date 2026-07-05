@@ -1,0 +1,39 @@
+import '../database/app_database.dart';
+import '../models/quick_action_model.dart';
+
+class QuickActionService {
+  const QuickActionService({AppDatabase? database}) : _database = database ?? AppDatabase.instance;
+
+  final AppDatabase _database;
+
+  Future<List<QuickActionModel>> getAllQuickActions({bool activeOnly = true}) async {
+    final db = await _database.database;
+    final rows = await db.query(
+      'quick_actions',
+      where: activeOnly ? 'is_active = ?' : null,
+      whereArgs: activeOnly ? [1] : null,
+      orderBy: 'sort_order ASC, id ASC',
+    );
+    return rows.map(QuickActionModel.fromMap).toList();
+  }
+
+  Future<int> insertQuickAction(QuickActionModel quickAction) async {
+    final db = await _database.database;
+    return db.insert('quick_actions', quickAction.toMap()..remove('id'));
+  }
+
+  Future<int> updateQuickAction(QuickActionModel quickAction) async {
+    final id = quickAction.id;
+    if (id == null) {
+      throw ArgumentError('Quick action id is required for update.');
+    }
+
+    final db = await _database.database;
+    return db.update('quick_actions', quickAction.toMap()..remove('id'), where: 'id = ?', whereArgs: [id]);
+  }
+
+  Future<int> deactivateQuickAction(int id) async {
+    final db = await _database.database;
+    return db.update('quick_actions', {'is_active': 0}, where: 'id = ?', whereArgs: [id]);
+  }
+}

@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 
+import '../../models/account_model.dart';
+import '../../services/account_service.dart';
 import '../../theme/app_colors.dart';
+import '../../utils/currency_formatter.dart';
 import '../../widgets/cards/finance_card.dart';
 import '../../widgets/common/app_screen.dart';
 
@@ -11,39 +14,38 @@ class AccountsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return AppScreen(
       title: 'Cuentas',
-      children: const [
-        _AccountActions(),
-        _AccountCard(
-          name: 'BCP Ahorros',
-          type: 'Cuenta bancaria',
-          currency: 'SOL',
-          balance: 'S/ 850.00',
-          visibleInBudget: true,
-          color: AppColors.blue,
-        ),
-        _AccountCard(
-          name: 'Yape',
-          type: 'Billetera digital',
-          currency: 'SOL',
-          balance: 'S/ 120.00',
-          visibleInBudget: true,
-          color: AppColors.purple,
-        ),
-        _AccountCard(
-          name: 'Cuenta USD',
-          type: 'Cuenta bancaria',
-          currency: 'USD',
-          balance: r'$200.00 / S/ 760.00',
-          visibleInBudget: true,
-          color: AppColors.green,
-        ),
-        _AccountCard(
-          name: 'Plazo Fijo',
-          type: 'Ahorro bloqueado',
-          currency: 'SOL',
-          balance: 'S/ 3,000.00',
-          visibleInBudget: false,
-          color: AppColors.orange,
+      children: [
+        const _AccountActions(),
+        FutureBuilder<List<AccountModel>>(
+          future: const AccountService().getAllAccounts(),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Center(child: CircularProgressIndicator());
+            }
+
+            if (snapshot.hasError) {
+              return const FinanceCard(
+                child: Text('No se pudieron cargar las cuentas locales.'),
+              );
+            }
+
+            final accounts = snapshot.data ?? const [];
+            if (accounts.isEmpty) {
+              return const FinanceCard(
+                child: Text('Todavia no hay cuentas registradas.'),
+              );
+            }
+
+            return Column(
+              children: [
+                for (final account in accounts)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 16),
+                    child: _AccountCard.fromModel(account),
+                  ),
+              ],
+            );
+          },
         ),
       ],
     );
@@ -94,6 +96,17 @@ class _AccountCard extends StatelessWidget {
   final bool visibleInBudget;
   final Color color;
 
+  factory _AccountCard.fromModel(AccountModel account) {
+    return _AccountCard(
+      name: account.name,
+      type: _accountTypeLabel(account.accountType),
+      currency: account.currency,
+      balance: _formatBalance(account),
+      visibleInBudget: !account.isHiddenFromBudget,
+      color: _colorFromHex(account.color),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return FinanceCard(
@@ -101,7 +114,7 @@ class _AccountCard extends StatelessWidget {
         children: [
           CircleAvatar(
             radius: 24,
-            backgroundColor: color.withOpacity(0.16),
+            backgroundColor: color.withValues(alpha: 0.16),
             child: Icon(Icons.account_balance_wallet_outlined, color: color),
           ),
           const SizedBox(width: 14),
@@ -109,9 +122,15 @@ class _AccountCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(name, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
+                Text(
+                  name,
+                  style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
+                ),
                 const SizedBox(height: 4),
-                Text('$type · $currency', style: const TextStyle(color: AppColors.textMuted)),
+                Text(
+                  '$type · $currency',
+                  style: const TextStyle(color: AppColors.textMuted),
+                ),
                 const SizedBox(height: 8),
                 Chip(
                   visualDensity: VisualDensity.compact,
@@ -119,14 +138,46 @@ class _AccountCard extends StatelessWidget {
                     visibleInBudget ? Icons.visibility_outlined : Icons.visibility_off_outlined,
                     size: 16,
                   ),
-                  label: Text(visibleInBudget ? 'Visible en presupuesto' : 'Oculta del presupuesto'),
+                  label: Text(
+                    visibleInBudget ? 'Visible en presupuesto' : 'Oculta del presupuesto',
+                  ),
                 ),
               ],
             ),
           ),
-          Text(balance, style: TextStyle(color: color, fontWeight: FontWeight.w900)),
+          Text(
+            balance,
+            style: TextStyle(color: color, fontWeight: FontWeight.w900),
+          ),
         ],
       ),
     );
   }
+}
+
+String _formatBalance(AccountModel account) {
+  if (account.currency == 'USD') {
+    return formatUsd(account.currentBalance);
+  }
+  return formatSol(account.currentBalance);
+}
+
+String _accountTypeLabel(String type) {
+  return switch (type) {
+    'ahorros' => 'Ahorros',
+    'corriente' => 'Corriente',
+    'sueldo' => 'Sueldo',
+    'plazo_fijo' => 'Plazo fijo',
+    'efectivo' => 'Efectivo',
+    'billetera' => 'Billetera digital',
+    _ => type,
+  };
+}
+
+Color _colorFromHex(String? value) {
+  if (value == null || value.length != 7 || !value.startsWith('#')) {
+    return AppColors.blue;
+  }
+
+  return Color(int.parse(value.substring(1), radix: 16) + 0xFF000000);
 }

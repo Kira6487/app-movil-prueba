@@ -94,7 +94,7 @@ class _ReportGrid extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               CircleAvatar(
-                backgroundColor: report.color.withOpacity(0.16),
+                backgroundColor: report.color.withValues(alpha: 0.16),
                 child: Icon(report.icon, color: report.color),
               ),
               const Spacer(),

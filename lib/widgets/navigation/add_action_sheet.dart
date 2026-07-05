@@ -69,7 +69,7 @@ class AddActionSheet extends StatelessWidget {
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                   tileColor: AppColors.surfaceAlt,
                   leading: CircleAvatar(
-                    backgroundColor: action.color.withOpacity(0.16),
+                    backgroundColor: action.color.withValues(alpha: 0.16),
                     child: Icon(action.icon, color: action.color),
                   ),
                   title: Text(action.title, style: const TextStyle(fontWeight: FontWeight.w700)),
