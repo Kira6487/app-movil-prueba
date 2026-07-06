@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../models/account_model.dart';
+import '../../providers/transaction_change_notifier.dart';
 import '../../services/account_service.dart';
 import '../../theme/app_colors.dart';
 import '../../utils/currency_formatter.dart';
@@ -17,15 +18,29 @@ class AccountsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AppScaffold(
+    return const AppScaffold(
       title: 'Cuentas',
       children: [
-        const SectionHeader(
+        SectionHeader(
           title: 'Tus cuentas',
           subtitle: 'Saldos locales cargados desde SQLite',
         ),
-        const _AccountActions(),
-        FutureBuilder<List<AccountModel>>(
+        _AccountActions(),
+        _AccountsList(),
+      ],
+    );
+  }
+}
+
+class _AccountsList extends StatelessWidget {
+  const _AccountsList();
+
+  @override
+  Widget build(BuildContext context) {
+    return ValueListenableBuilder<int>(
+      valueListenable: TransactionChangeNotifier.version,
+      builder: (context, _, __) {
+        return FutureBuilder<List<AccountModel>>(
           future: AccountService().getAllAccounts(),
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
@@ -43,8 +58,9 @@ class AccountsScreen extends StatelessWidget {
             final accounts = snapshot.data ?? const [];
             if (accounts.isEmpty) {
               return const EmptyState(
-                title: 'Todavía no hay cuentas registradas',
-                message: 'La pantalla está lista para mostrar cuentas locales.',
+                title: 'TodavÃ­a no hay cuentas registradas',
+                message:
+                    'La pantalla estÃ¡ lista para mostrar cuentas locales.',
                 icon: Icons.account_balance_wallet_outlined,
               );
             }
@@ -66,8 +82,8 @@ class AccountsScreen extends StatelessWidget {
               ],
             );
           },
-        ),
-      ],
+        );
+      },
     );
   }
 }
@@ -87,7 +103,7 @@ class _AccountActions extends StatelessWidget {
               context,
               title: 'Nueva cuenta',
               description:
-                  'El formulario real de cuentas se implementará en una fase posterior.',
+                  'El formulario real de cuentas se implementarÃ¡ en una fase posterior.',
               icon: Icons.account_balance_wallet_outlined,
               color: AppColors.blue,
             ),
@@ -102,7 +118,7 @@ class _AccountActions extends StatelessWidget {
               context,
               title: 'Transferencia entre cuentas',
               description:
-                  'La transferencia funcional se implementará más adelante.',
+                  'La transferencia funcional se implementarÃ¡ mÃ¡s adelante.',
               icon: Icons.swap_horiz,
               color: AppColors.blue,
             ),

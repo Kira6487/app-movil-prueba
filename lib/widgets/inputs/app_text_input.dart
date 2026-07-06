@@ -9,6 +9,11 @@ class AppTextInput extends StatelessWidget {
     this.keyboardType,
     this.enabled = true,
     this.prefixIcon,
+    this.validator,
+    this.maxLines = 1,
+    this.readOnly = false,
+    this.onTap,
+    this.suffixIcon,
   });
 
   final String label;
@@ -17,17 +22,27 @@ class AppTextInput extends StatelessWidget {
   final TextInputType? keyboardType;
   final bool enabled;
   final IconData? prefixIcon;
+  final FormFieldValidator<String>? validator;
+  final int maxLines;
+  final bool readOnly;
+  final VoidCallback? onTap;
+  final Widget? suffixIcon;
 
   @override
   Widget build(BuildContext context) {
-    return TextField(
+    return TextFormField(
       controller: controller,
       keyboardType: keyboardType,
       enabled: enabled,
+      validator: validator,
+      maxLines: maxLines,
+      readOnly: readOnly,
+      onTap: onTap,
       decoration: InputDecoration(
         labelText: label,
         hintText: hintText,
         prefixIcon: prefixIcon == null ? null : Icon(prefixIcon),
+        suffixIcon: suffixIcon,
       ),
     );
   }

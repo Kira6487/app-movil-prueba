@@ -1,5 +1,6 @@
 import '../database/app_database.dart';
 import '../models/financial_transaction_model.dart';
+import '../models/transaction_history_item.dart';
 import '../utils/money_utils.dart';
 
 class TransactionService {
@@ -9,10 +10,7 @@ class TransactionService {
   final AppDatabase _database;
 
   Future<int> insertTransaction(FinancialTransactionModel transaction) async {
-    if (transaction.type != 'income' && transaction.type != 'expense') {
-      throw ArgumentError(
-          'Financial transaction type must be income or expense.');
-    }
+    _validateTransaction(transaction);
 
     final db = await _database.database;
     return db.transaction((txn) async {
@@ -25,6 +23,17 @@ class TransactionService {
       );
       if (accountRows.isEmpty) {
         throw StateError('Account ${transaction.accountId} does not exist.');
+      }
+
+      final categoryRows = await txn.query(
+        'categories',
+        columns: ['id'],
+        where: 'id = ?',
+        whereArgs: [transaction.categoryId],
+        limit: 1,
+      );
+      if (categoryRows.isEmpty) {
+        throw StateError('Category ${transaction.categoryId} does not exist.');
       }
 
       final currentBalance =
@@ -60,6 +69,37 @@ class TransactionService {
     final rows =
         await db.query('financial_transactions', orderBy: 'date DESC, id DESC');
     return rows.map(FinancialTransactionModel.fromMap).toList();
+  }
+
+  Future<List<TransactionHistoryItem>> getLatestTransactions({
+    int limit = 10,
+  }) async {
+    final db = await _database.database;
+    final rows = await db.rawQuery(
+      '''
+SELECT
+  t.id,
+  t.type,
+  t.amount,
+  t.currency,
+  t.exchange_rate,
+  t.amount_in_base_currency,
+  t.account_id,
+  t.category_id,
+  t.date,
+  t.comment,
+  t.created_at,
+  a.name AS account_name,
+  c.name AS category_name
+FROM financial_transactions t
+INNER JOIN accounts a ON a.id = t.account_id
+INNER JOIN categories c ON c.id = t.category_id
+ORDER BY t.date DESC, t.id DESC
+LIMIT ?
+''',
+      [limit],
+    );
+    return rows.map(TransactionHistoryItem.fromMap).toList();
   }
 
   Future<List<FinancialTransactionModel>> getTransactionsByMonth(
@@ -98,5 +138,30 @@ class TransactionService {
       orderBy: 'date DESC, id DESC',
     );
     return rows.map(FinancialTransactionModel.fromMap).toList();
+  }
+
+  void _validateTransaction(FinancialTransactionModel transaction) {
+    if (transaction.type != 'income' && transaction.type != 'expense') {
+      throw ArgumentError(
+        'Financial transaction type must be income or expense.',
+      );
+    }
+    if (transaction.amount <= 0) {
+      throw ArgumentError('Transaction amount must be greater than zero.');
+    }
+    if (transaction.accountId <= 0) {
+      throw ArgumentError('A valid account is required.');
+    }
+    if (transaction.categoryId <= 0) {
+      throw ArgumentError('A valid category is required.');
+    }
+    if (transaction.currency != 'SOL' && transaction.currency != 'USD') {
+      throw ArgumentError('Currency must be SOL or USD.');
+    }
+    if (transaction.currency == 'USD' &&
+        transaction.exchangeRate != null &&
+        transaction.exchangeRate! <= 0) {
+      throw ArgumentError('Exchange rate must be greater than zero.');
+    }
   }
 }

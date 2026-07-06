@@ -103,8 +103,11 @@ void main() {
     );
 
     final updated = await accountService.getAccountById(account.id!);
+    final transactions = await transactionService.getAllTransactions();
 
     expect(updated!.currentBalance, account.currentBalance - 25);
+    expect(transactions, hasLength(1));
+    expect(transactions.single.type, 'expense');
   });
 
   test('inserta ingreso y actualiza saldo', () async {
@@ -126,8 +129,135 @@ void main() {
     );
 
     final updated = await accountService.getAccountById(account.id!);
+    final transactions = await transactionService.getAllTransactions();
 
     expect(updated!.currentBalance, account.currentBalance + 100);
+    expect(transactions, hasLength(1));
+    expect(transactions.single.type, 'income');
+  });
+
+  test('guarda gasto USD con monto base usando tipo de cambio', () async {
+    final account = (await accountService.getVisibleAccounts())
+        .firstWhere((account) => account.currency == 'USD');
+    final category = (await categoryService.getAllCategories())
+        .firstWhere((category) => category.type == 'expense');
+    final now = AppDateUtils.nowIso();
+
+    await transactionService.insertTransaction(
+      FinancialTransactionModel(
+        type: 'expense',
+        amount: 10,
+        currency: 'USD',
+        exchangeRate: 3.8,
+        accountId: account.id!,
+        categoryId: category.id!,
+        date: now,
+        createdAt: now,
+      ),
+    );
+
+    final transactions = await transactionService.getAllTransactions();
+
+    expect(transactions.single.amountInBaseCurrency, 38);
+  });
+
+  test('quick action carga datos correctos', () async {
+    final actions =
+        await QuickActionService(database: database).getAllQuickActions();
+    final menu = actions.firstWhere((action) => action.name == 'Menú');
+
+    expect(menu.amount, 12);
+    expect(menu.currency, 'SOL');
+    expect(menu.accountId, isNotNull);
+    expect(menu.categoryId, isNotNull);
+  });
+
+  test('no permite monto 0 o negativo', () async {
+    final account = (await accountService.getVisibleAccounts()).first;
+    final category = (await categoryService.getAllCategories())
+        .firstWhere((category) => category.type == 'expense');
+    final now = AppDateUtils.nowIso();
+
+    Future<void> insertWithAmount(double amount) {
+      return transactionService.insertTransaction(
+        FinancialTransactionModel(
+          type: 'expense',
+          amount: amount,
+          currency: account.currency,
+          accountId: account.id!,
+          categoryId: category.id!,
+          date: now,
+          createdAt: now,
+        ),
+      );
+    }
+
+    expect(() => insertWithAmount(0), throwsArgumentError);
+    expect(() => insertWithAmount(-1), throwsArgumentError);
+  });
+
+  test('no permite guardar sin cuenta o categoria valida', () async {
+    final account = (await accountService.getVisibleAccounts()).first;
+    final category = (await categoryService.getAllCategories())
+        .firstWhere((category) => category.type == 'expense');
+    final now = AppDateUtils.nowIso();
+
+    expect(
+      () => transactionService.insertTransaction(
+        FinancialTransactionModel(
+          type: 'expense',
+          amount: 10,
+          currency: account.currency,
+          accountId: 0,
+          categoryId: category.id!,
+          date: now,
+          createdAt: now,
+        ),
+      ),
+      throwsArgumentError,
+    );
+
+    expect(
+      () => transactionService.insertTransaction(
+        FinancialTransactionModel(
+          type: 'expense',
+          amount: 10,
+          currency: account.currency,
+          accountId: account.id!,
+          categoryId: 0,
+          date: now,
+          createdAt: now,
+        ),
+      ),
+      throwsArgumentError,
+    );
+  });
+
+  test('historial devuelve movimientos con cuenta y categoria', () async {
+    final account = (await accountService.getVisibleAccounts()).first;
+    final category = (await categoryService.getAllCategories())
+        .firstWhere((category) => category.type == 'income');
+    final now = AppDateUtils.nowIso();
+
+    await transactionService.insertTransaction(
+      FinancialTransactionModel(
+        type: 'income',
+        amount: 75,
+        currency: account.currency,
+        accountId: account.id!,
+        categoryId: category.id!,
+        date: now,
+        comment: 'Bono',
+        createdAt: now,
+      ),
+    );
+
+    final history = await transactionService.getLatestTransactions();
+
+    expect(history, hasLength(1));
+    expect(history.single.accountName, account.name);
+    expect(history.single.categoryName, category.name);
+    expect(history.single.transaction.comment, 'Bono');
   });
 
   test('transfiere entre cuentas sin crear ingreso o gasto', () async {

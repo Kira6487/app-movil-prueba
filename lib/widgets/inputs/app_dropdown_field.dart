@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 
 class AppDropdownField<T> extends StatelessWidget {
   const AppDropdownField({
@@ -8,6 +8,8 @@ class AppDropdownField<T> extends StatelessWidget {
     required this.itemLabel,
     this.value,
     this.onChanged,
+    this.validator,
+    this.prefixIcon,
   });
 
   final String label;
@@ -15,6 +17,8 @@ class AppDropdownField<T> extends StatelessWidget {
   final String Function(T item) itemLabel;
   final T? value;
   final ValueChanged<T?>? onChanged;
+  final FormFieldValidator<T>? validator;
+  final IconData? prefixIcon;
 
   @override
   Widget build(BuildContext context) {
@@ -28,7 +32,11 @@ class AppDropdownField<T> extends StatelessWidget {
           ),
       ],
       onChanged: onChanged,
-      decoration: InputDecoration(labelText: label),
+      validator: validator,
+      decoration: InputDecoration(
+        labelText: label,
+        prefixIcon: prefixIcon == null ? null : Icon(prefixIcon),
+      ),
     );
   }
 }
