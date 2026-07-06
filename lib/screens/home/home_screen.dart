@@ -1,29 +1,34 @@
 import 'package:flutter/material.dart';
 
 import '../../theme/app_colors.dart';
-import '../../widgets/cards/finance_card.dart';
-import '../../widgets/common/app_screen.dart';
+import '../../widgets/common/app_scaffold.dart';
 import '../../widgets/common/month_selector.dart';
+import '../../widgets/common/section_header.dart';
+import '../../widgets/cards/progress_bar_card.dart';
+import '../../widgets/cards/status_card.dart';
+import '../../widgets/cards/summary_card.dart';
+import '../settings/settings_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return AppScreen(
+    return AppScaffold(
       title: 'Inicio',
       actions: [
         IconButton(
+          tooltip: 'Notificaciones',
           onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-                content: Text('Notificaciones estaran disponibles pronto')),
+                content: Text('Notificaciones estarán disponibles pronto')),
           ),
           icon: const Icon(Icons.notifications_outlined),
         ),
         IconButton(
-          onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-                content: Text('Configuracion estara disponible pronto')),
+          tooltip: 'Configuración',
+          onPressed: () => Navigator.of(context).push(
+            MaterialPageRoute<void>(builder: (_) => const SettingsScreen()),
           ),
           icon: const Icon(Icons.settings_outlined),
         ),
@@ -33,7 +38,7 @@ class HomeScreen extends StatelessWidget {
         Row(
           children: [
             Expanded(
-              child: _StatusCard(
+              child: StatusCard(
                 title: 'Estado Diario',
                 status: 'Bueno',
                 description: 'Gasto dentro del presupuesto',
@@ -43,7 +48,7 @@ class HomeScreen extends StatelessWidget {
             ),
             SizedBox(width: 12),
             Expanded(
-              child: _StatusCard(
+              child: StatusCard(
                 title: 'Estado Mensual',
                 status: 'En alerta',
                 description: 'Vas 78% del presupuesto',
@@ -53,158 +58,69 @@ class HomeScreen extends StatelessWidget {
             ),
           ],
         ),
-        _MonthlySummaryCard(),
-        _BudgetLimitCard(),
-        _AccountsSummaryCard(),
+        SectionHeader(
+          title: 'Resumen financiero',
+          subtitle: 'Datos demo para validar estructura visual',
+        ),
+        SummaryCard(
+          title: 'Resumen del mes',
+          icon: Icons.receipt_long_outlined,
+          accentColor: AppColors.green,
+          items: [
+            SummaryItem(
+                label: 'Ingreso total',
+                value: 'S/ 2,450.00',
+                valueColor: AppColors.green),
+            SummaryItem(label: 'Gasto presupuestado', value: 'S/ 1,800.00'),
+            SummaryItem(
+                label: 'Ahorro presupuestado',
+                value: 'S/ 500.00',
+                valueColor: AppColors.purple),
+            SummaryItem(
+                label: 'Gasto real',
+                value: 'S/ 1,410.50',
+                valueColor: AppColors.red),
+            SummaryItem(
+                label: 'Disponible',
+                value: 'S/ 389.50',
+                valueColor: AppColors.green),
+            SummaryItem(
+                label: 'Ahorro generado',
+                value: 'S/ 389.50',
+                valueColor: AppColors.green),
+          ],
+        ),
+        ProgressBarCard(
+          title: 'Gasto real vs. límite de presupuesto',
+          currentLabel: 'S/ 1,410.50 usado',
+          percentLabel: '78%',
+          value: 0.78,
+          color: AppColors.orange,
+        ),
+        SummaryCard(
+          title: 'Resumen de cuentas',
+          icon: Icons.account_balance_wallet_outlined,
+          accentColor: AppColors.blue,
+          items: [
+            SummaryItem(
+                label: 'BCP Ahorros',
+                value: 'S/ 850.00',
+                valueColor: AppColors.blue),
+            SummaryItem(
+                label: 'Yape',
+                value: 'S/ 120.00',
+                valueColor: AppColors.purple),
+            SummaryItem(
+                label: 'Cuenta USD',
+                value: r'$200.00 / S/ 760.00',
+                valueColor: AppColors.green),
+            SummaryItem(
+                label: 'Plazo Fijo',
+                value: 'S/ 3,000.00 oculto',
+                valueColor: AppColors.orange),
+          ],
+        ),
       ],
-    );
-  }
-}
-
-class _StatusCard extends StatelessWidget {
-  const _StatusCard({
-    required this.title,
-    required this.status,
-    required this.description,
-    required this.color,
-    required this.icon,
-  });
-
-  final String title;
-  final String status;
-  final String description;
-  final Color color;
-  final IconData icon;
-
-  @override
-  Widget build(BuildContext context) {
-    return FinanceCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, color: color),
-          const SizedBox(height: 12),
-          Text(title,
-              style: const TextStyle(color: AppColors.textMuted, fontSize: 12)),
-          const SizedBox(height: 6),
-          Text(status,
-              style: TextStyle(
-                  color: color, fontSize: 20, fontWeight: FontWeight.w800)),
-          const SizedBox(height: 6),
-          Text(description),
-        ],
-      ),
-    );
-  }
-}
-
-class _MonthlySummaryCard extends StatelessWidget {
-  const _MonthlySummaryCard();
-
-  @override
-  Widget build(BuildContext context) {
-    return const FinanceCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('Resumen del mes',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-          SizedBox(height: 10),
-          MetricRow(
-              label: 'Ingreso total',
-              value: 'S/ 2,450.00',
-              valueColor: AppColors.green),
-          MetricRow(label: 'Gasto presupuestado', value: 'S/ 1,800.00'),
-          MetricRow(
-              label: 'Ahorro presupuestado',
-              value: 'S/ 500.00',
-              valueColor: AppColors.purple),
-          MetricRow(
-              label: 'Gasto real',
-              value: 'S/ 1,410.50',
-              valueColor: AppColors.red),
-          Divider(height: 24),
-          MetricRow(
-              label: 'Disponible',
-              value: 'S/ 389.50',
-              valueColor: AppColors.green),
-          MetricRow(
-              label: 'Ahorro generado',
-              value: 'S/ 389.50',
-              valueColor: AppColors.green),
-        ],
-      ),
-    );
-  }
-}
-
-class _BudgetLimitCard extends StatelessWidget {
-  const _BudgetLimitCard();
-
-  @override
-  Widget build(BuildContext context) {
-    return FinanceCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Gasto real vs. limite de presupuesto',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 14),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(999),
-            child: const LinearProgressIndicator(
-              minHeight: 12,
-              value: 0.78,
-              color: AppColors.orange,
-              backgroundColor: AppColors.surfaceAlt,
-            ),
-          ),
-          const SizedBox(height: 10),
-          const Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text('S/ 1,410.50 usado'),
-              Text('78%',
-                  style: TextStyle(
-                      color: AppColors.orange, fontWeight: FontWeight.w800)),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _AccountsSummaryCard extends StatelessWidget {
-  const _AccountsSummaryCard();
-
-  @override
-  Widget build(BuildContext context) {
-    return const FinanceCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('Resumen de cuentas',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-          SizedBox(height: 10),
-          MetricRow(
-              label: 'BCP Ahorros',
-              value: 'S/ 850.00',
-              valueColor: AppColors.blue),
-          MetricRow(
-              label: 'Yape', value: 'S/ 120.00', valueColor: AppColors.purple),
-          MetricRow(
-              label: 'Cuenta USD',
-              value: r'$200.00 / S/ 760.00',
-              valueColor: AppColors.green),
-          MetricRow(
-              label: 'Plazo Fijo',
-              value: 'S/ 3,000.00 oculto',
-              valueColor: AppColors.orange),
-        ],
-      ),
     );
   }
 }

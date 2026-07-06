@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 
 import '../theme/app_colors.dart';
 import '../widgets/navigation/add_action_sheet.dart';
@@ -28,7 +28,7 @@ class _MainShellState extends State<MainShell> {
     showModalBottomSheet<void>(
       context: context,
       useSafeArea: true,
-      showDragHandle: true,
+      showDragHandle: false,
       backgroundColor: AppColors.surface,
       builder: (context) => const AddActionSheet(),
     );

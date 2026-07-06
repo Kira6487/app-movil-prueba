@@ -4,17 +4,26 @@ import '../../models/account_model.dart';
 import '../../services/account_service.dart';
 import '../../theme/app_colors.dart';
 import '../../utils/currency_formatter.dart';
-import '../../widgets/cards/finance_card.dart';
-import '../../widgets/common/app_screen.dart';
+import '../../widgets/buttons/app_primary_button.dart';
+import '../../widgets/buttons/app_secondary_button.dart';
+import '../../widgets/cards/account_card.dart';
+import '../../widgets/common/app_scaffold.dart';
+import '../../widgets/common/empty_state.dart';
+import '../../widgets/common/section_header.dart';
+import '../placeholders/action_placeholder_screen.dart';
 
 class AccountsScreen extends StatelessWidget {
   const AccountsScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return AppScreen(
+    return AppScaffold(
       title: 'Cuentas',
       children: [
+        const SectionHeader(
+          title: 'Tus cuentas',
+          subtitle: 'Saldos locales cargados desde SQLite',
+        ),
         const _AccountActions(),
         FutureBuilder<List<AccountModel>>(
           future: AccountService().getAllAccounts(),
@@ -24,15 +33,19 @@ class AccountsScreen extends StatelessWidget {
             }
 
             if (snapshot.hasError) {
-              return const FinanceCard(
-                child: Text('No se pudieron cargar las cuentas locales.'),
+              return const EmptyState(
+                title: 'No se pudieron cargar las cuentas',
+                message: 'Revisa la base local o intenta nuevamente.',
+                icon: Icons.error_outline,
               );
             }
 
             final accounts = snapshot.data ?? const [];
             if (accounts.isEmpty) {
-              return const FinanceCard(
-                child: Text('Todavia no hay cuentas registradas.'),
+              return const EmptyState(
+                title: 'Todavía no hay cuentas registradas',
+                message: 'La pantalla está lista para mostrar cuentas locales.',
+                icon: Icons.account_balance_wallet_outlined,
               );
             }
 
@@ -40,8 +53,15 @@ class AccountsScreen extends StatelessWidget {
               children: [
                 for (final account in accounts)
                   Padding(
-                    padding: const EdgeInsets.only(bottom: 16),
-                    child: _AccountCard.fromModel(account),
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: AccountCard(
+                      name: account.name,
+                      type: _accountTypeLabel(account.accountType),
+                      currency: account.currency,
+                      balance: _formatBalance(account),
+                      visibleInBudget: !account.isHiddenFromBudget,
+                      color: _colorFromHex(account.color),
+                    ),
                   ),
               ],
             );
@@ -60,101 +80,53 @@ class _AccountActions extends StatelessWidget {
     return Row(
       children: [
         Expanded(
-          child: FilledButton.icon(
-            onPressed: () {},
-            icon: const Icon(Icons.add),
-            label: const Text('Nueva cuenta'),
+          child: AppPrimaryButton(
+            label: 'Nueva cuenta',
+            icon: Icons.add,
+            onPressed: () => _openPlaceholder(
+              context,
+              title: 'Nueva cuenta',
+              description:
+                  'El formulario real de cuentas se implementará en una fase posterior.',
+              icon: Icons.account_balance_wallet_outlined,
+              color: AppColors.blue,
+            ),
           ),
         ),
         const SizedBox(width: 12),
         Expanded(
-          child: OutlinedButton.icon(
-            onPressed: () {},
-            icon: const Icon(Icons.swap_horiz),
-            label: const Text('Transferir'),
+          child: AppSecondaryButton(
+            label: 'Transferir',
+            icon: Icons.swap_horiz,
+            onPressed: () => _openPlaceholder(
+              context,
+              title: 'Transferencia entre cuentas',
+              description:
+                  'La transferencia funcional se implementará más adelante.',
+              icon: Icons.swap_horiz,
+              color: AppColors.blue,
+            ),
           ),
         ),
       ],
     );
   }
-}
 
-class _AccountCard extends StatelessWidget {
-  const _AccountCard({
-    required this.name,
-    required this.type,
-    required this.currency,
-    required this.balance,
-    required this.visibleInBudget,
-    required this.color,
-  });
-
-  final String name;
-  final String type;
-  final String currency;
-  final String balance;
-  final bool visibleInBudget;
-  final Color color;
-
-  factory _AccountCard.fromModel(AccountModel account) {
-    return _AccountCard(
-      name: account.name,
-      type: _accountTypeLabel(account.accountType),
-      currency: account.currency,
-      balance: _formatBalance(account),
-      visibleInBudget: !account.isHiddenFromBudget,
-      color: _colorFromHex(account.color),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return FinanceCard(
-      child: Row(
-        children: [
-          CircleAvatar(
-            radius: 24,
-            backgroundColor: color.withValues(alpha: 0.16),
-            child: Icon(Icons.account_balance_wallet_outlined, color: color),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  name,
-                  style: const TextStyle(
-                      fontSize: 17, fontWeight: FontWeight.w800),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  '$type · $currency',
-                  style: const TextStyle(color: AppColors.textMuted),
-                ),
-                const SizedBox(height: 8),
-                Chip(
-                  visualDensity: VisualDensity.compact,
-                  avatar: Icon(
-                    visibleInBudget
-                        ? Icons.visibility_outlined
-                        : Icons.visibility_off_outlined,
-                    size: 16,
-                  ),
-                  label: Text(
-                    visibleInBudget
-                        ? 'Visible en presupuesto'
-                        : 'Oculta del presupuesto',
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Text(
-            balance,
-            style: TextStyle(color: color, fontWeight: FontWeight.w900),
-          ),
-        ],
+  void _openPlaceholder(
+    BuildContext context, {
+    required String title,
+    required String description,
+    required IconData icon,
+    required Color color,
+  }) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => ActionPlaceholderScreen(
+          title: title,
+          description: description,
+          icon: icon,
+          color: color,
+        ),
       ),
     );
   }

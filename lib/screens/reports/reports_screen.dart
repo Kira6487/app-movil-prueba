@@ -1,19 +1,76 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 
 import '../../theme/app_colors.dart';
-import '../../widgets/cards/finance_card.dart';
-import '../../widgets/common/app_screen.dart';
+import '../../theme/app_text_styles.dart';
+import '../../widgets/cards/report_option_card.dart';
+import '../../widgets/common/app_card.dart';
+import '../../widgets/common/app_scaffold.dart';
+import '../../widgets/common/section_header.dart';
+import '../placeholders/action_placeholder_screen.dart';
 
 class ReportsScreen extends StatelessWidget {
   const ReportsScreen({super.key});
 
+  static const _reports = [
+    _ReportItem(Icons.category_outlined, 'Reporte por categoría',
+        'Agrupa gastos por tipo', AppColors.red),
+    _ReportItem(Icons.account_balance_outlined, 'Reporte por cuenta',
+        'Revisa saldos y movimientos', AppColors.blue),
+    _ReportItem(Icons.track_changes_outlined, 'Presupuesto vs. gasto',
+        'Compara avance mensual', AppColors.orange),
+    _ReportItem(Icons.currency_exchange, 'Diferencia de cambio',
+        'Visualiza impacto USD/SOL', AppColors.green),
+    _ReportItem(Icons.credit_card, 'Tarjetas de crédito',
+        'Consumos y cuotas demo', AppColors.purple),
+    _ReportItem(Icons.savings_outlined, 'Ahorro', 'Metas y progreso esperado',
+        AppColors.green),
+  ];
+
   @override
   Widget build(BuildContext context) {
-    return const AppScreen(
+    return AppScaffold(
       title: 'Reportes',
       children: [
-        _ReportFilters(),
-        _ReportGrid(),
+        const SectionHeader(
+          title: 'Filtros',
+          subtitle: 'Controles visuales demo para futuras consultas',
+        ),
+        const _ReportFilters(),
+        const SectionHeader(
+          title: 'Opciones de reporte',
+          subtitle: 'Accesos preparados para Fase 4',
+        ),
+        GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: _reports.length,
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2,
+            mainAxisSpacing: 12,
+            crossAxisSpacing: 12,
+            childAspectRatio: 0.92,
+          ),
+          itemBuilder: (context, index) {
+            final report = _reports[index];
+            return ReportOptionCard(
+              icon: report.icon,
+              title: report.title,
+              description: report.description,
+              color: report.color,
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => ActionPlaceholderScreen(
+                    title: report.title,
+                    description:
+                        'Este reporte se conectará a datos reales en una fase posterior.',
+                    icon: report.icon,
+                    color: report.color,
+                  ),
+                ),
+              ),
+            );
+          },
+        ),
       ],
     );
   }
@@ -30,7 +87,7 @@ class _ReportFilters extends StatelessWidget {
         SizedBox(width: 10),
         Expanded(child: _FilterBox(label: 'Cuenta', value: 'Todas')),
         SizedBox(width: 10),
-        Expanded(child: _FilterBox(label: 'Categoria', value: 'Todas')),
+        Expanded(child: _FilterBox(label: 'Categoría', value: 'Todas')),
       ],
     );
   }
@@ -44,84 +101,27 @@ class _FilterBox extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return AppCard(
       padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceAlt,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.border),
-      ),
+      backgroundColor: AppColors.surfaceAlt,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label,
-              style: const TextStyle(color: AppColors.textMuted, fontSize: 11)),
+          Text(label, style: AppTextStyles.label),
           const SizedBox(height: 4),
           Text(value,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontWeight: FontWeight.w800)),
+              overflow: TextOverflow.ellipsis, style: AppTextStyles.cardTitle),
         ],
       ),
     );
   }
 }
 
-class _ReportGrid extends StatelessWidget {
-  const _ReportGrid();
-
-  static const reports = [
-    _ReportItem(
-        Icons.category_outlined, 'Reporte por categoria', AppColors.red),
-    _ReportItem(
-        Icons.account_balance_outlined, 'Reporte por cuenta', AppColors.blue),
-    _ReportItem(Icons.track_changes_outlined, 'Presupuesto vs. Gasto',
-        AppColors.orange),
-    _ReportItem(
-        Icons.currency_exchange, 'Diferencia de cambio', AppColors.green),
-    _ReportItem(Icons.credit_card, 'Tarjetas de credito', AppColors.purple),
-    _ReportItem(Icons.savings_outlined, 'Ahorro', AppColors.green),
-  ];
-
-  @override
-  Widget build(BuildContext context) {
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      itemCount: reports.length,
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        mainAxisSpacing: 12,
-        crossAxisSpacing: 12,
-        childAspectRatio: 1.1,
-      ),
-      itemBuilder: (context, index) {
-        final report = reports[index];
-        return FinanceCard(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              CircleAvatar(
-                backgroundColor: report.color.withValues(alpha: 0.16),
-                child: Icon(report.icon, color: report.color),
-              ),
-              const Spacer(),
-              Text(report.title,
-                  style: const TextStyle(
-                      fontSize: 16, fontWeight: FontWeight.w800)),
-              const SizedBox(height: 8),
-              const Icon(Icons.chevron_right),
-            ],
-          ),
-        );
-      },
-    );
-  }
-}
-
 class _ReportItem {
-  const _ReportItem(this.icon, this.title, this.color);
+  const _ReportItem(this.icon, this.title, this.description, this.color);
 
   final IconData icon;
   final String title;
+  final String description;
   final Color color;
 }

@@ -1,22 +1,63 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 
 import '../../theme/app_colors.dart';
-import '../../widgets/cards/finance_card.dart';
-import '../../widgets/common/app_screen.dart';
+import '../../theme/app_text_styles.dart';
+import '../../widgets/buttons/app_secondary_button.dart';
+import '../../widgets/cards/calendar_event_card.dart';
+import '../../widgets/common/app_card.dart';
+import '../../widgets/common/app_scaffold.dart';
 import '../../widgets/common/month_selector.dart';
+import '../../widgets/common/section_header.dart';
+import '../placeholders/action_placeholder_screen.dart';
 
 class CalendarScreen extends StatelessWidget {
   const CalendarScreen({super.key});
 
+  static const _events = [
+    _CalendarEvent(Icons.restaurant, 'Menú', 'S/ 12.00', AppColors.red),
+    _CalendarEvent(Icons.directions_bus, 'Pasaje', 'S/ 4.00', AppColors.red),
+    _CalendarEvent(Icons.water_drop_outlined, 'Agua', 'S/ 45.00 pendiente',
+        AppColors.orange),
+    _CalendarEvent(Icons.credit_card, 'Fecha de corte BCP Visa', 'Recordatorio',
+        AppColors.blue),
+    _CalendarEvent(Icons.school_outlined, 'Universidad',
+        'S/ 350.00 pago cercano', AppColors.purple),
+  ];
+
   @override
   Widget build(BuildContext context) {
-    return const AppScreen(
+    return AppScaffold(
       title: 'Calendario',
       children: [
-        MonthSelector(),
-        _CalendarFilters(),
-        _StaticCalendar(),
-        _SelectedDayList(),
+        const MonthSelector(),
+        const _CalendarFilters(),
+        const _StaticCalendar(),
+        SectionHeader(
+          title: 'Día seleccionado',
+          subtitle: '${_events.length} eventos demo para este día',
+        ),
+        for (final event in _events)
+          CalendarEventCard(
+            icon: event.icon,
+            title: event.title,
+            detail: event.detail,
+            color: event.color,
+          ),
+        AppSecondaryButton(
+          label: 'Agregar evento para este día',
+          icon: Icons.add,
+          onPressed: () => Navigator.of(context).push(
+            MaterialPageRoute<void>(
+              builder: (_) => const ActionPlaceholderScreen(
+                title: 'Agregar evento',
+                description:
+                    'El calendario persistente se implementará en una fase posterior.',
+                icon: Icons.event_available_outlined,
+                color: AppColors.blue,
+              ),
+            ),
+          ),
+        ),
       ],
     );
   }
@@ -46,8 +87,6 @@ class _CalendarFilters extends StatelessWidget {
                 selected: filter == 'Todos',
                 onSelected: (_) {},
                 label: Text(filter),
-                selectedColor: AppColors.blue.withValues(alpha: 0.22),
-                checkmarkColor: AppColors.blue,
               ),
             ),
         ],
@@ -66,10 +105,10 @@ class _StaticCalendar extends StatelessWidget {
       5: AppColors.red,
       12: AppColors.orange,
       18: AppColors.blue,
-      24: AppColors.purple
+      24: AppColors.purple,
     };
 
-    return FinanceCard(
+    return AppCard(
       child: Column(
         children: [
           const Row(
@@ -107,9 +146,9 @@ class _StaticCalendar extends StatelessWidget {
                 child: Center(
                   child: Text(
                     day,
-                    style: TextStyle(
+                    style: AppTextStyles.body.copyWith(
                       color: isSelected ? Colors.white : AppColors.textPrimary,
-                      fontWeight: FontWeight.w700,
+                      fontWeight: FontWeight.w800,
                     ),
                   ),
                 ),
@@ -131,56 +170,13 @@ class _Weekday extends StatelessWidget {
   Widget build(BuildContext context) {
     return SizedBox(
       width: 32,
-      child: Center(
-        child: Text(label,
-            style: const TextStyle(
-                color: AppColors.textMuted, fontWeight: FontWeight.w700)),
-      ),
+      child: Center(child: Text(label, style: AppTextStyles.label)),
     );
   }
 }
 
-class _SelectedDayList extends StatelessWidget {
-  const _SelectedDayList();
-
-  static const items = [
-    _CalendarItem(Icons.restaurant, 'Menu', 'S/ 12.00', AppColors.red),
-    _CalendarItem(Icons.directions_bus, 'Pasaje', 'S/ 4.00', AppColors.red),
-    _CalendarItem(Icons.water_drop_outlined, 'Agua', 'S/ 45.00 pendiente',
-        AppColors.orange),
-    _CalendarItem(Icons.credit_card, 'Fecha de corte BCP Visa', 'Recordatorio',
-        AppColors.blue),
-    _CalendarItem(Icons.school_outlined, 'Universidad',
-        'S/ 350.00 pago cercano', AppColors.purple),
-  ];
-
-  @override
-  Widget build(BuildContext context) {
-    return FinanceCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text('Dia seleccionado',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 10),
-          for (final item in items)
-            ListTile(
-              contentPadding: EdgeInsets.zero,
-              leading: CircleAvatar(
-                backgroundColor: item.color.withValues(alpha: 0.16),
-                child: Icon(item.icon, color: item.color),
-              ),
-              title: Text(item.title),
-              subtitle: Text(item.detail),
-            ),
-        ],
-      ),
-    );
-  }
-}
-
-class _CalendarItem {
-  const _CalendarItem(this.icon, this.title, this.detail, this.color);
+class _CalendarEvent {
+  const _CalendarEvent(this.icon, this.title, this.detail, this.color);
 
   final IconData icon;
   final String title;

@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 
 import '../../theme/app_colors.dart';
+import '../../widgets/buttons/quick_action_button.dart';
+import '../../widgets/navigation/app_bottom_sheet.dart';
+import '../../screens/placeholders/action_placeholder_screen.dart';
 
 class AddActionSheet extends StatelessWidget {
   const AddActionSheet({super.key});
@@ -9,7 +12,7 @@ class AddActionSheet extends StatelessWidget {
     _AddAction(
       icon: Icons.remove_circle_outline,
       title: 'Registrar gasto',
-      description: 'Registra un gasto rapido',
+      description: 'Registra un gasto rápido',
       color: AppColors.red,
     ),
     _AddAction(
@@ -27,7 +30,7 @@ class AddActionSheet extends StatelessWidget {
     _AddAction(
       icon: Icons.credit_card,
       title: 'Consumo con tarjeta',
-      description: 'Registra un consumo con tarjeta de credito',
+      description: 'Registra un consumo con tarjeta de crédito',
       color: AppColors.orange,
     ),
     _AddAction(
@@ -46,54 +49,34 @@ class AddActionSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Nueva accion',
-            style: Theme.of(context)
-                .textTheme
-                .titleLarge
-                ?.copyWith(fontWeight: FontWeight.bold),
+    return AppBottomSheet(
+      title: 'Nueva acción',
+      subtitle: 'Selecciona el flujo que quieres preparar',
+      children: [
+        for (final action in _actions)
+          QuickActionButton(
+            icon: action.icon,
+            title: action.title,
+            description: action.description,
+            color: action.color,
+            onTap: () => _openPlaceholder(context, action),
           ),
-          const SizedBox(height: 16),
-          Flexible(
-            child: ListView.separated(
-              shrinkWrap: true,
-              itemCount: _actions.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 10),
-              itemBuilder: (context, index) {
-                final action = _actions[index];
-                return ListTile(
-                  contentPadding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16)),
-                  tileColor: AppColors.surfaceAlt,
-                  leading: CircleAvatar(
-                    backgroundColor: action.color.withValues(alpha: 0.16),
-                    child: Icon(action.icon, color: action.color),
-                  ),
-                  title: Text(action.title,
-                      style: const TextStyle(fontWeight: FontWeight.w700)),
-                  subtitle: Text(action.description),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () {
-                    Navigator.of(context).pop();
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                          content:
-                              Text('${action.title} estara disponible pronto')),
-                    );
-                  },
-                );
-              },
-            ),
-          ),
-        ],
+      ],
+    );
+  }
+
+  void _openPlaceholder(BuildContext context, _AddAction action) {
+    final navigator = Navigator.of(context);
+    navigator.pop();
+    navigator.push(
+      MaterialPageRoute<void>(
+        builder: (_) => ActionPlaceholderScreen(
+          title: action.title,
+          description:
+              '${action.description}. El formulario real se implementará en una fase posterior.',
+          icon: action.icon,
+          color: action.color,
+        ),
       ),
     );
   }

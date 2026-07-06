@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../theme/app_colors.dart';
+import '../common/app_card.dart';
 
 class FinanceCard extends StatelessWidget {
   const FinanceCard({
@@ -14,11 +14,9 @@ class FinanceCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: padding,
-        child: child,
-      ),
+    return AppCard(
+      padding: padding,
+      child: child,
     );
   }
 }
@@ -42,13 +40,17 @@ class MetricRow extends StatelessWidget {
       child: Row(
         children: [
           Expanded(
-            child:
-                Text(label, style: const TextStyle(color: AppColors.textMuted)),
+            child: Text(
+              label,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+            ),
           ),
           Text(
             value,
             style: TextStyle(
-              color: valueColor ?? AppColors.textPrimary,
+              color: valueColor,
               fontWeight: FontWeight.w800,
             ),
           ),
