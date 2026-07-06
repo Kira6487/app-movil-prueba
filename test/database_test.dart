@@ -1,4 +1,4 @@
-import 'package:finanzas_personales/database/app_database.dart';
+﻿import 'package:finanzas_personales/database/app_database.dart';
 import 'package:finanzas_personales/models/account_model.dart';
 import 'package:finanzas_personales/models/category_model.dart';
 import 'package:finanzas_personales/models/financial_transaction_model.dart';

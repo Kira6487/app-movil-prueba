@@ -58,9 +58,8 @@ class _AccountsList extends StatelessWidget {
             final accounts = snapshot.data ?? const [];
             if (accounts.isEmpty) {
               return const EmptyState(
-                title: 'TodavÃ­a no hay cuentas registradas',
-                message:
-                    'La pantalla estÃ¡ lista para mostrar cuentas locales.',
+                title: 'Todavía no hay cuentas registradas',
+                message: 'La pantalla está lista para mostrar cuentas locales.',
                 icon: Icons.account_balance_wallet_outlined,
               );
             }
@@ -103,7 +102,7 @@ class _AccountActions extends StatelessWidget {
               context,
               title: 'Nueva cuenta',
               description:
-                  'El formulario real de cuentas se implementarÃ¡ en una fase posterior.',
+                  'El formulario real de cuentas se implementará en una fase posterior.',
               icon: Icons.account_balance_wallet_outlined,
               color: AppColors.blue,
             ),
@@ -118,7 +117,7 @@ class _AccountActions extends StatelessWidget {
               context,
               title: 'Transferencia entre cuentas',
               description:
-                  'La transferencia funcional se implementarÃ¡ mÃ¡s adelante.',
+                  'La transferencia funcional se implementará más adelante.',
               icon: Icons.swap_horiz,
               color: AppColors.blue,
             ),

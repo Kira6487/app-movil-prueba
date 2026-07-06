@@ -20,34 +20,37 @@ class AppScaffold extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      child: CustomScrollView(
-        slivers: [
-          SliverAppBar(
-            pinned: true,
-            titleSpacing: AppSpacing.lg,
-            backgroundColor: AppColors.background,
-            surfaceTintColor: Colors.transparent,
-            title: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title, style: AppTextStyles.title),
-                if (subtitle != null)
-                  Text(subtitle!, style: AppTextStyles.muted),
-              ],
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      body: SafeArea(
+        child: CustomScrollView(
+          slivers: [
+            SliverAppBar(
+              pinned: true,
+              titleSpacing: AppSpacing.lg,
+              backgroundColor: AppColors.background,
+              surfaceTintColor: Colors.transparent,
+              title: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, style: AppTextStyles.title),
+                  if (subtitle != null)
+                    Text(subtitle!, style: AppTextStyles.muted),
+                ],
+              ),
+              actions: actions,
             ),
-            actions: actions,
-          ),
-          SliverPadding(
-            padding: AppSpacing.screen,
-            sliver: SliverList.separated(
-              itemCount: children.length,
-              separatorBuilder: (_, __) =>
-                  const SizedBox(height: AppSpacing.lg),
-              itemBuilder: (context, index) => children[index],
+            SliverPadding(
+              padding: AppSpacing.screen,
+              sliver: SliverList.separated(
+                itemCount: children.length,
+                separatorBuilder: (_, __) =>
+                    const SizedBox(height: AppSpacing.lg),
+                itemBuilder: (context, index) => children[index],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

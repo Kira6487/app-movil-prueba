@@ -123,7 +123,7 @@ class _TransactionFormScreenState extends State<TransactionFormScreen> {
                 title: 'Faltan datos locales',
                 message: data.accounts.isEmpty
                     ? 'Registra una cuenta antes de crear movimientos.'
-                    : 'Registra categorÃ­as para este tipo de movimiento.',
+                    : 'Registra categorías para este tipo de movimiento.',
                 icon: Icons.inventory_2_outlined,
               );
             }
@@ -133,7 +133,7 @@ class _TransactionFormScreenState extends State<TransactionFormScreen> {
               children: [
                 if (_isExpense && data.quickActions.isNotEmpty) ...[
                   const SectionHeader(
-                    title: 'Botones rÃ¡pidos',
+                    title: 'Botones rápidos',
                     subtitle:
                         'Precargan el formulario; puedes editar antes de guardar.',
                   ),
@@ -189,7 +189,7 @@ class _TransactionFormScreenState extends State<TransactionFormScreen> {
                           label: 'Cuenta',
                           items: data.accounts,
                           itemLabel: (account) =>
-                              '${account.name} Â· ${account.currency}',
+                              '${account.name} · ${account.currency}',
                           value: _selectedAccount,
                           prefixIcon: Icons.account_balance_wallet_outlined,
                           onChanged: (value) {
@@ -200,7 +200,7 @@ class _TransactionFormScreenState extends State<TransactionFormScreen> {
                         ),
                         const SizedBox(height: 14),
                         AppDropdownField<CategoryModel>(
-                          label: 'CategorÃ­a',
+                          label: 'Categoría',
                           items: data.categories,
                           itemLabel: (category) => category.name,
                           value: _selectedCategory,
@@ -208,9 +208,8 @@ class _TransactionFormScreenState extends State<TransactionFormScreen> {
                           onChanged: (value) {
                             setState(() => _selectedCategory = value);
                           },
-                          validator: (value) => value == null
-                              ? 'Selecciona una categorÃ­a'
-                              : null,
+                          validator: (value) =>
+                              value == null ? 'Selecciona una categoría' : null,
                         ),
                         const SizedBox(height: 14),
                         AppTextInput(
@@ -430,7 +429,7 @@ class _QuickActionList extends StatelessWidget {
   IconData _iconForQuickAction(String name) {
     final normalized = name.toLowerCase();
     if (normalized.contains('pasaje')) return Icons.directions_bus;
-    if (normalized.contains('cafÃ©')) return Icons.local_cafe;
+    if (normalized.contains('café')) return Icons.local_cafe;
     if (normalized.contains('postre')) return Icons.cake_outlined;
     if (normalized.contains('taxi')) return Icons.local_taxi;
     return Icons.restaurant;
