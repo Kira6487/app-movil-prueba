@@ -3,11 +3,13 @@ import '../models/savings_goal_model.dart';
 import '../models/wallet_model.dart';
 
 class SavingsService {
-  const SavingsService({AppDatabase? database}) : _database = database ?? AppDatabase.instance;
+  SavingsService({AppDatabase? database})
+      : _database = database ?? AppDatabase.instance;
 
   final AppDatabase _database;
 
-  Future<List<SavingsGoalModel>> getAllSavingsGoals({bool activeOnly = true}) async {
+  Future<List<SavingsGoalModel>> getAllSavingsGoals(
+      {bool activeOnly = true}) async {
     final db = await _database.database;
     final rows = await db.query(
       'savings_goals',
@@ -29,7 +31,8 @@ class SavingsService {
       throw ArgumentError('Savings goal id is required for update.');
     }
     final db = await _database.database;
-    return db.update('savings_goals', goal.toMap()..remove('id'), where: 'id = ?', whereArgs: [id]);
+    return db.update('savings_goals', goal.toMap()..remove('id'),
+        where: 'id = ?', whereArgs: [id]);
   }
 
   Future<List<WalletModel>> getWalletsByAccount(int accountId) async {

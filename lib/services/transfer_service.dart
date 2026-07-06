@@ -2,7 +2,8 @@ import '../database/app_database.dart';
 import '../models/transfer_model.dart';
 
 class TransferService {
-  const TransferService({AppDatabase? database}) : _database = database ?? AppDatabase.instance;
+  TransferService({AppDatabase? database})
+      : _database = database ?? AppDatabase.instance;
 
   final AppDatabase _database;
 

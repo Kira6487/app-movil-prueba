@@ -3,13 +3,15 @@ import '../models/financial_transaction_model.dart';
 import '../utils/money_utils.dart';
 
 class TransactionService {
-  const TransactionService({AppDatabase? database}) : _database = database ?? AppDatabase.instance;
+  TransactionService({AppDatabase? database})
+      : _database = database ?? AppDatabase.instance;
 
   final AppDatabase _database;
 
   Future<int> insertTransaction(FinancialTransactionModel transaction) async {
     if (transaction.type != 'income' && transaction.type != 'expense') {
-      throw ArgumentError('Financial transaction type must be income or expense.');
+      throw ArgumentError(
+          'Financial transaction type must be income or expense.');
     }
 
     final db = await _database.database;
@@ -25,8 +27,11 @@ class TransactionService {
         throw StateError('Account ${transaction.accountId} does not exist.');
       }
 
-      final currentBalance = (accountRows.first['current_balance'] as num).toDouble();
-      final delta = transaction.type == 'income' ? transaction.amount : -transaction.amount;
+      final currentBalance =
+          (accountRows.first['current_balance'] as num).toDouble();
+      final delta = transaction.type == 'income'
+          ? transaction.amount
+          : -transaction.amount;
       await txn.update(
         'accounts',
         {'current_balance': currentBalance + delta},
@@ -42,18 +47,23 @@ class TransactionService {
             exchangeRate: transaction.exchangeRate,
           );
 
-      final data = transaction.copyWith(amountInBaseCurrency: amountInBaseCurrency).toMap()..remove('id');
+      final data = transaction
+          .copyWith(amountInBaseCurrency: amountInBaseCurrency)
+          .toMap()
+        ..remove('id');
       return txn.insert('financial_transactions', data);
     });
   }
 
   Future<List<FinancialTransactionModel>> getAllTransactions() async {
     final db = await _database.database;
-    final rows = await db.query('financial_transactions', orderBy: 'date DESC, id DESC');
+    final rows =
+        await db.query('financial_transactions', orderBy: 'date DESC, id DESC');
     return rows.map(FinancialTransactionModel.fromMap).toList();
   }
 
-  Future<List<FinancialTransactionModel>> getTransactionsByMonth(int year, int month) async {
+  Future<List<FinancialTransactionModel>> getTransactionsByMonth(
+      int year, int month) async {
     final start = DateTime(year, month).toIso8601String();
     final end = DateTime(year, month + 1).toIso8601String();
     final db = await _database.database;
@@ -66,7 +76,8 @@ class TransactionService {
     return rows.map(FinancialTransactionModel.fromMap).toList();
   }
 
-  Future<List<FinancialTransactionModel>> getTransactionsByAccount(int accountId) async {
+  Future<List<FinancialTransactionModel>> getTransactionsByAccount(
+      int accountId) async {
     final db = await _database.database;
     final rows = await db.query(
       'financial_transactions',
@@ -77,7 +88,8 @@ class TransactionService {
     return rows.map(FinancialTransactionModel.fromMap).toList();
   }
 
-  Future<List<FinancialTransactionModel>> getTransactionsByCategory(int categoryId) async {
+  Future<List<FinancialTransactionModel>> getTransactionsByCategory(
+      int categoryId) async {
     final db = await _database.database;
     final rows = await db.query(
       'financial_transactions',

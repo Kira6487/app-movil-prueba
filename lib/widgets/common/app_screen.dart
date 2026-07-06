@@ -19,7 +19,8 @@ class AppScreen extends StatelessWidget {
         slivers: [
           SliverAppBar(
             pinned: true,
-            title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
+            title: Text(title,
+                style: const TextStyle(fontWeight: FontWeight.bold)),
             actions: actions,
           ),
           SliverPadding(

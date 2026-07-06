@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 
 import '../../theme/app_colors.dart';
 import '../../widgets/cards/finance_card.dart';
@@ -10,9 +10,9 @@ class CalendarScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AppScreen(
+    return const AppScreen(
       title: 'Calendario',
-      children: const [
+      children: [
         MonthSelector(),
         _CalendarFilters(),
         _StaticCalendar(),
@@ -25,7 +25,13 @@ class CalendarScreen extends StatelessWidget {
 class _CalendarFilters extends StatelessWidget {
   const _CalendarFilters();
 
-  static const filters = ['Todos', 'Presupuestos', 'Pagos', 'Tarjetas', 'Alertas'];
+  static const filters = [
+    'Todos',
+    'Presupuestos',
+    'Pagos',
+    'Tarjetas',
+    'Alertas'
+  ];
 
   @override
   Widget build(BuildContext context) {
@@ -56,7 +62,12 @@ class _StaticCalendar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final days = List.generate(35, (index) => index < 4 ? '' : '${index - 3}');
-    const highlighted = {5: AppColors.red, 12: AppColors.orange, 18: AppColors.blue, 24: AppColors.purple};
+    const highlighted = {
+      5: AppColors.red,
+      12: AppColors.orange,
+      18: AppColors.blue,
+      24: AppColors.purple
+    };
 
     return FinanceCard(
       child: Column(
@@ -121,7 +132,9 @@ class _Weekday extends StatelessWidget {
     return SizedBox(
       width: 32,
       child: Center(
-        child: Text(label, style: const TextStyle(color: AppColors.textMuted, fontWeight: FontWeight.w700)),
+        child: Text(label,
+            style: const TextStyle(
+                color: AppColors.textMuted, fontWeight: FontWeight.w700)),
       ),
     );
   }
@@ -133,9 +146,12 @@ class _SelectedDayList extends StatelessWidget {
   static const items = [
     _CalendarItem(Icons.restaurant, 'Menu', 'S/ 12.00', AppColors.red),
     _CalendarItem(Icons.directions_bus, 'Pasaje', 'S/ 4.00', AppColors.red),
-    _CalendarItem(Icons.water_drop_outlined, 'Agua', 'S/ 45.00 pendiente', AppColors.orange),
-    _CalendarItem(Icons.credit_card, 'Fecha de corte BCP Visa', 'Recordatorio', AppColors.blue),
-    _CalendarItem(Icons.school_outlined, 'Universidad', 'S/ 350.00 pago cercano', AppColors.purple),
+    _CalendarItem(Icons.water_drop_outlined, 'Agua', 'S/ 45.00 pendiente',
+        AppColors.orange),
+    _CalendarItem(Icons.credit_card, 'Fecha de corte BCP Visa', 'Recordatorio',
+        AppColors.blue),
+    _CalendarItem(Icons.school_outlined, 'Universidad',
+        'S/ 350.00 pago cercano', AppColors.purple),
   ];
 
   @override
@@ -144,7 +160,8 @@ class _SelectedDayList extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Dia seleccionado', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          const Text('Dia seleccionado',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
           const SizedBox(height: 10),
           for (final item in items)
             ListTile(

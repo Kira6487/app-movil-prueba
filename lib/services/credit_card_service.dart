@@ -3,11 +3,13 @@ import '../models/credit_card_installment_model.dart';
 import '../models/credit_card_model.dart';
 
 class CreditCardService {
-  const CreditCardService({AppDatabase? database}) : _database = database ?? AppDatabase.instance;
+  CreditCardService({AppDatabase? database})
+      : _database = database ?? AppDatabase.instance;
 
   final AppDatabase _database;
 
-  Future<List<CreditCardModel>> getAllCreditCards({bool activeOnly = true}) async {
+  Future<List<CreditCardModel>> getAllCreditCards(
+      {bool activeOnly = true}) async {
     final db = await _database.database;
     final rows = await db.query(
       'credit_cards',
@@ -29,10 +31,12 @@ class CreditCardService {
       throw ArgumentError('Credit card id is required for update.');
     }
     final db = await _database.database;
-    return db.update('credit_cards', card.toMap()..remove('id'), where: 'id = ?', whereArgs: [id]);
+    return db.update('credit_cards', card.toMap()..remove('id'),
+        where: 'id = ?', whereArgs: [id]);
   }
 
-  Future<List<CreditCardInstallmentModel>> getInstallmentsByCard(int creditCardId) async {
+  Future<List<CreditCardInstallmentModel>> getInstallmentsByCard(
+      int creditCardId) async {
     final db = await _database.database;
     final rows = await db.query(
       'credit_card_installments',
@@ -45,6 +49,7 @@ class CreditCardService {
 
   Future<int> insertInstallment(CreditCardInstallmentModel installment) async {
     final db = await _database.database;
-    return db.insert('credit_card_installments', installment.toMap()..remove('id'));
+    return db.insert(
+        'credit_card_installments', installment.toMap()..remove('id'));
   }
 }

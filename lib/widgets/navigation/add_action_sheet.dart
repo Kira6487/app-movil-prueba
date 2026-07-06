@@ -54,7 +54,10 @@ class AddActionSheet extends StatelessWidget {
         children: [
           Text(
             'Nueva accion',
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+            style: Theme.of(context)
+                .textTheme
+                .titleLarge
+                ?.copyWith(fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 16),
           Flexible(
@@ -65,20 +68,25 @@ class AddActionSheet extends StatelessWidget {
               itemBuilder: (context, index) {
                 final action = _actions[index];
                 return ListTile(
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16)),
                   tileColor: AppColors.surfaceAlt,
                   leading: CircleAvatar(
                     backgroundColor: action.color.withValues(alpha: 0.16),
                     child: Icon(action.icon, color: action.color),
                   ),
-                  title: Text(action.title, style: const TextStyle(fontWeight: FontWeight.w700)),
+                  title: Text(action.title,
+                      style: const TextStyle(fontWeight: FontWeight.w700)),
                   subtitle: Text(action.description),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () {
                     Navigator.of(context).pop();
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('${action.title} estara disponible pronto')),
+                      SnackBar(
+                          content:
+                              Text('${action.title} estara disponible pronto')),
                     );
                   },
                 );

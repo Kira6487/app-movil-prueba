@@ -2,11 +2,13 @@ import '../database/app_database.dart';
 import '../models/scheduled_expense_model.dart';
 
 class ScheduledExpenseService {
-  const ScheduledExpenseService({AppDatabase? database}) : _database = database ?? AppDatabase.instance;
+  ScheduledExpenseService({AppDatabase? database})
+      : _database = database ?? AppDatabase.instance;
 
   final AppDatabase _database;
 
-  Future<List<ScheduledExpenseModel>> getAllScheduledExpenses({bool activeOnly = true}) async {
+  Future<List<ScheduledExpenseModel>> getAllScheduledExpenses(
+      {bool activeOnly = true}) async {
     final db = await _database.database;
     final rows = await db.query(
       'scheduled_expenses',
@@ -28,6 +30,7 @@ class ScheduledExpenseService {
       throw ArgumentError('Scheduled expense id is required for update.');
     }
     final db = await _database.database;
-    return db.update('scheduled_expenses', expense.toMap()..remove('id'), where: 'id = ?', whereArgs: [id]);
+    return db.update('scheduled_expenses', expense.toMap()..remove('id'),
+        where: 'id = ?', whereArgs: [id]);
   }
 }

@@ -21,13 +21,15 @@ class SavingsGoalModel {
   final bool isActive;
   final String createdAt;
 
-  factory SavingsGoalModel.fromMap(Map<String, Object?> map) => SavingsGoalModel(
+  factory SavingsGoalModel.fromMap(Map<String, Object?> map) =>
+      SavingsGoalModel(
         id: map['id'] as int?,
         name: map['name'] as String,
         targetAmount: (map['target_amount'] as num).toDouble(),
         currentAmount: (map['current_amount'] as num).toDouble(),
         currency: map['currency'] as String,
-        plannedMonthlyAmount: (map['planned_monthly_amount'] as num?)?.toDouble(),
+        plannedMonthlyAmount:
+            (map['planned_monthly_amount'] as num?)?.toDouble(),
         deadline: map['deadline'] as String?,
         isActive: (map['is_active'] as int) == 1,
         createdAt: map['created_at'] as String,

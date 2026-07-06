@@ -42,7 +42,8 @@ class MetricRow extends StatelessWidget {
       child: Row(
         children: [
           Expanded(
-            child: Text(label, style: const TextStyle(color: AppColors.textMuted)),
+            child:
+                Text(label, style: const TextStyle(color: AppColors.textMuted)),
           ),
           Text(
             value,

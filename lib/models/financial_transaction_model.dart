@@ -32,7 +32,8 @@ class FinancialTransactionModel {
       amount: (map['amount'] as num).toDouble(),
       currency: map['currency'] as String,
       exchangeRate: (map['exchange_rate'] as num?)?.toDouble(),
-      amountInBaseCurrency: (map['amount_in_base_currency'] as num?)?.toDouble(),
+      amountInBaseCurrency:
+          (map['amount_in_base_currency'] as num?)?.toDouble(),
       accountId: map['account_id'] as int,
       categoryId: map['category_id'] as int,
       date: map['date'] as String,

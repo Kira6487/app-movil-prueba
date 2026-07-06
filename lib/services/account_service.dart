@@ -2,7 +2,8 @@ import '../database/app_database.dart';
 import '../models/account_model.dart';
 
 class AccountService {
-  const AccountService({AppDatabase? database}) : _database = database ?? AppDatabase.instance;
+  AccountService({AppDatabase? database})
+      : _database = database ?? AppDatabase.instance;
 
   final AppDatabase _database;
 
@@ -36,7 +37,8 @@ class AccountService {
 
   Future<AccountModel?> getAccountById(int id) async {
     final db = await _database.database;
-    final rows = await db.query('accounts', where: 'id = ?', whereArgs: [id], limit: 1);
+    final rows =
+        await db.query('accounts', where: 'id = ?', whereArgs: [id], limit: 1);
     if (rows.isEmpty) {
       return null;
     }
@@ -55,7 +57,8 @@ class AccountService {
     }
 
     final db = await _database.database;
-    return db.update('accounts', account.toMap()..remove('id'), where: 'id = ?', whereArgs: [id]);
+    return db.update('accounts', account.toMap()..remove('id'),
+        where: 'id = ?', whereArgs: [id]);
   }
 
   Future<int> updateAccountBalance(int accountId, double newBalance) async {

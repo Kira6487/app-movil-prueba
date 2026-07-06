@@ -159,7 +159,8 @@ void main() {
   });
 
   test('lee botones rapidos iniciales', () async {
-    final actions = await QuickActionService(database: database).getAllQuickActions();
+    final actions =
+        await QuickActionService(database: database).getAllQuickActions();
 
     expect(
       actions.map((action) => action.name),
@@ -168,7 +169,8 @@ void main() {
   });
 
   test('lee tipo de cambio inicial', () async {
-    final latest = await ExchangeRateService(database: database).getLatestRate();
+    final latest =
+        await ExchangeRateService(database: database).getLatestRate();
 
     expect(latest, isNotNull);
     expect(latest!.rate, 3.80);

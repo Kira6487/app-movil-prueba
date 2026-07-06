@@ -31,7 +31,8 @@ class ScheduledExpenseModel {
   final bool isActive;
   final String createdAt;
 
-  factory ScheduledExpenseModel.fromMap(Map<String, Object?> map) => ScheduledExpenseModel(
+  factory ScheduledExpenseModel.fromMap(Map<String, Object?> map) =>
+      ScheduledExpenseModel(
         id: map['id'] as int?,
         name: map['name'] as String,
         categoryId: map['category_id'] as int,

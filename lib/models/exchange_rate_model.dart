@@ -15,7 +15,8 @@ class ExchangeRateModel {
   final String date;
   final String createdAt;
 
-  factory ExchangeRateModel.fromMap(Map<String, Object?> map) => ExchangeRateModel(
+  factory ExchangeRateModel.fromMap(Map<String, Object?> map) =>
+      ExchangeRateModel(
         id: map['id'] as int?,
         fromCurrency: map['from_currency'] as String,
         toCurrency: map['to_currency'] as String,

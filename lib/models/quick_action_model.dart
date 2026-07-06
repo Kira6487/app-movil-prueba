@@ -27,7 +27,8 @@ class QuickActionModel {
   final int sortOrder;
   final String createdAt;
 
-  factory QuickActionModel.fromMap(Map<String, Object?> map) => QuickActionModel(
+  factory QuickActionModel.fromMap(Map<String, Object?> map) =>
+      QuickActionModel(
         id: map['id'] as int?,
         name: map['name'] as String,
         amount: (map['amount'] as num).toDouble(),

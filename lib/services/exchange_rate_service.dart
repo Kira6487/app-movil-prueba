@@ -2,7 +2,8 @@ import '../database/app_database.dart';
 import '../models/exchange_rate_model.dart';
 
 class ExchangeRateService {
-  const ExchangeRateService({AppDatabase? database}) : _database = database ?? AppDatabase.instance;
+  ExchangeRateService({AppDatabase? database})
+      : _database = database ?? AppDatabase.instance;
 
   final AppDatabase _database;
 

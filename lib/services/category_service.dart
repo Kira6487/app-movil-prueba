@@ -4,7 +4,8 @@ import '../database/app_database.dart';
 import '../models/category_model.dart';
 
 class CategoryService {
-  const CategoryService({AppDatabase? database}) : _database = database ?? AppDatabase.instance;
+  CategoryService({AppDatabase? database})
+      : _database = database ?? AppDatabase.instance;
 
   final AppDatabase _database;
 
@@ -31,7 +32,8 @@ class CategoryService {
     }
 
     final db = await _database.database;
-    return db.update('categories', category.toMap()..remove('id'), where: 'id = ?', whereArgs: [id]);
+    return db.update('categories', category.toMap()..remove('id'),
+        where: 'id = ?', whereArgs: [id]);
   }
 
   Future<int> deleteOrDeactivateCategory(int id) async {
@@ -45,7 +47,8 @@ class CategoryService {
         0;
 
     if (used > 0) {
-      return db.update('categories', {'is_active': 0}, where: 'id = ?', whereArgs: [id]);
+      return db.update('categories', {'is_active': 0},
+          where: 'id = ?', whereArgs: [id]);
     }
 
     return db.delete('categories', where: 'id = ?', whereArgs: [id]);

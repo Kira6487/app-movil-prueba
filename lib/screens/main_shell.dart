@@ -47,7 +47,8 @@ class _MainShellState extends State<MainShell> {
 
   @override
   Widget build(BuildContext context) {
-    final navigationIndex = _selectedIndex >= 2 ? _selectedIndex + 1 : _selectedIndex;
+    final navigationIndex =
+        _selectedIndex >= 2 ? _selectedIndex + 1 : _selectedIndex;
 
     return Scaffold(
       body: IndexedStack(

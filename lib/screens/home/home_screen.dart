@@ -15,13 +15,15 @@ class HomeScreen extends StatelessWidget {
       actions: [
         IconButton(
           onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Notificaciones estaran disponibles pronto')),
+            const SnackBar(
+                content: Text('Notificaciones estaran disponibles pronto')),
           ),
           icon: const Icon(Icons.notifications_outlined),
         ),
         IconButton(
           onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Configuracion estara disponible pronto')),
+            const SnackBar(
+                content: Text('Configuracion estara disponible pronto')),
           ),
           icon: const Icon(Icons.settings_outlined),
         ),
@@ -82,9 +84,12 @@ class _StatusCard extends StatelessWidget {
         children: [
           Icon(icon, color: color),
           const SizedBox(height: 12),
-          Text(title, style: const TextStyle(color: AppColors.textMuted, fontSize: 12)),
+          Text(title,
+              style: const TextStyle(color: AppColors.textMuted, fontSize: 12)),
           const SizedBox(height: 6),
-          Text(status, style: TextStyle(color: color, fontSize: 20, fontWeight: FontWeight.w800)),
+          Text(status,
+              style: TextStyle(
+                  color: color, fontSize: 20, fontWeight: FontWeight.w800)),
           const SizedBox(height: 6),
           Text(description),
         ],
@@ -102,15 +107,31 @@ class _MonthlySummaryCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Resumen del mes', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          Text('Resumen del mes',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
           SizedBox(height: 10),
-          MetricRow(label: 'Ingreso total', value: 'S/ 2,450.00', valueColor: AppColors.green),
+          MetricRow(
+              label: 'Ingreso total',
+              value: 'S/ 2,450.00',
+              valueColor: AppColors.green),
           MetricRow(label: 'Gasto presupuestado', value: 'S/ 1,800.00'),
-          MetricRow(label: 'Ahorro presupuestado', value: 'S/ 500.00', valueColor: AppColors.purple),
-          MetricRow(label: 'Gasto real', value: 'S/ 1,410.50', valueColor: AppColors.red),
+          MetricRow(
+              label: 'Ahorro presupuestado',
+              value: 'S/ 500.00',
+              valueColor: AppColors.purple),
+          MetricRow(
+              label: 'Gasto real',
+              value: 'S/ 1,410.50',
+              valueColor: AppColors.red),
           Divider(height: 24),
-          MetricRow(label: 'Disponible', value: 'S/ 389.50', valueColor: AppColors.green),
-          MetricRow(label: 'Ahorro generado', value: 'S/ 389.50', valueColor: AppColors.green),
+          MetricRow(
+              label: 'Disponible',
+              value: 'S/ 389.50',
+              valueColor: AppColors.green),
+          MetricRow(
+              label: 'Ahorro generado',
+              value: 'S/ 389.50',
+              valueColor: AppColors.green),
         ],
       ),
     );
@@ -145,7 +166,9 @@ class _BudgetLimitCard extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text('S/ 1,410.50 usado'),
-              Text('78%', style: TextStyle(color: AppColors.orange, fontWeight: FontWeight.w800)),
+              Text('78%',
+                  style: TextStyle(
+                      color: AppColors.orange, fontWeight: FontWeight.w800)),
             ],
           ),
         ],
@@ -163,12 +186,23 @@ class _AccountsSummaryCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Resumen de cuentas', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          Text('Resumen de cuentas',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
           SizedBox(height: 10),
-          MetricRow(label: 'BCP Ahorros', value: 'S/ 850.00', valueColor: AppColors.blue),
-          MetricRow(label: 'Yape', value: 'S/ 120.00', valueColor: AppColors.purple),
-          MetricRow(label: 'Cuenta USD', value: r'$200.00 / S/ 760.00', valueColor: AppColors.green),
-          MetricRow(label: 'Plazo Fijo', value: 'S/ 3,000.00 oculto', valueColor: AppColors.orange),
+          MetricRow(
+              label: 'BCP Ahorros',
+              value: 'S/ 850.00',
+              valueColor: AppColors.blue),
+          MetricRow(
+              label: 'Yape', value: 'S/ 120.00', valueColor: AppColors.purple),
+          MetricRow(
+              label: 'Cuenta USD',
+              value: r'$200.00 / S/ 760.00',
+              valueColor: AppColors.green),
+          MetricRow(
+              label: 'Plazo Fijo',
+              value: 'S/ 3,000.00 oculto',
+              valueColor: AppColors.orange),
         ],
       ),
     );

@@ -2,11 +2,13 @@ import '../database/app_database.dart';
 import '../models/budget_rule_model.dart';
 
 class BudgetService {
-  const BudgetService({AppDatabase? database}) : _database = database ?? AppDatabase.instance;
+  BudgetService({AppDatabase? database})
+      : _database = database ?? AppDatabase.instance;
 
   final AppDatabase _database;
 
-  Future<List<BudgetRuleModel>> getAllBudgetRules({bool activeOnly = true}) async {
+  Future<List<BudgetRuleModel>> getAllBudgetRules(
+      {bool activeOnly = true}) async {
     final db = await _database.database;
     final rows = await db.query(
       'budget_rules',
@@ -28,6 +30,7 @@ class BudgetService {
       throw ArgumentError('Budget rule id is required for update.');
     }
     final db = await _database.database;
-    return db.update('budget_rules', rule.toMap()..remove('id'), where: 'id = ?', whereArgs: [id]);
+    return db.update('budget_rules', rule.toMap()..remove('id'),
+        where: 'id = ?', whereArgs: [id]);
   }
 }

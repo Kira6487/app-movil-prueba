@@ -6,7 +6,9 @@ class SeedData {
   const SeedData._();
 
   static Future<void> insertIfEmpty(Database db) async {
-    final count = Sqflite.firstIntValue(await db.rawQuery('SELECT COUNT(*) FROM categories')) ?? 0;
+    final count = Sqflite.firstIntValue(
+            await db.rawQuery('SELECT COUNT(*) FROM categories')) ??
+        0;
     if (count > 0) {
       return;
     }
@@ -42,7 +44,12 @@ class SeedData {
       await insertCategory(name, 'expense', '#EF4444');
     }
 
-    for (final name in ['Sueldo', 'Freelance', 'Devolución', 'Otros ingresos']) {
+    for (final name in [
+      'Sueldo',
+      'Freelance',
+      'Devolución',
+      'Otros ingresos'
+    ]) {
       await insertCategory(name, 'income', '#22C55E');
     }
 

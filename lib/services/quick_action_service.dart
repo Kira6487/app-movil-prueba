@@ -2,11 +2,13 @@ import '../database/app_database.dart';
 import '../models/quick_action_model.dart';
 
 class QuickActionService {
-  const QuickActionService({AppDatabase? database}) : _database = database ?? AppDatabase.instance;
+  QuickActionService({AppDatabase? database})
+      : _database = database ?? AppDatabase.instance;
 
   final AppDatabase _database;
 
-  Future<List<QuickActionModel>> getAllQuickActions({bool activeOnly = true}) async {
+  Future<List<QuickActionModel>> getAllQuickActions(
+      {bool activeOnly = true}) async {
     final db = await _database.database;
     final rows = await db.query(
       'quick_actions',
@@ -29,11 +31,13 @@ class QuickActionService {
     }
 
     final db = await _database.database;
-    return db.update('quick_actions', quickAction.toMap()..remove('id'), where: 'id = ?', whereArgs: [id]);
+    return db.update('quick_actions', quickAction.toMap()..remove('id'),
+        where: 'id = ?', whereArgs: [id]);
   }
 
   Future<int> deactivateQuickAction(int id) async {
     final db = await _database.database;
-    return db.update('quick_actions', {'is_active': 0}, where: 'id = ?', whereArgs: [id]);
+    return db.update('quick_actions', {'is_active': 0},
+        where: 'id = ?', whereArgs: [id]);
   }
 }

@@ -17,7 +17,7 @@ class AccountsScreen extends StatelessWidget {
       children: [
         const _AccountActions(),
         FutureBuilder<List<AccountModel>>(
-          future: const AccountService().getAllAccounts(),
+          future: AccountService().getAllAccounts(),
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
               return const Center(child: CircularProgressIndicator());
@@ -124,7 +124,8 @@ class _AccountCard extends StatelessWidget {
               children: [
                 Text(
                   name,
-                  style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
+                  style: const TextStyle(
+                      fontSize: 17, fontWeight: FontWeight.w800),
                 ),
                 const SizedBox(height: 4),
                 Text(
@@ -135,11 +136,15 @@ class _AccountCard extends StatelessWidget {
                 Chip(
                   visualDensity: VisualDensity.compact,
                   avatar: Icon(
-                    visibleInBudget ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+                    visibleInBudget
+                        ? Icons.visibility_outlined
+                        : Icons.visibility_off_outlined,
                     size: 16,
                   ),
                   label: Text(
-                    visibleInBudget ? 'Visible en presupuesto' : 'Oculta del presupuesto',
+                    visibleInBudget
+                        ? 'Visible en presupuesto'
+                        : 'Oculta del presupuesto',
                   ),
                 ),
               ],

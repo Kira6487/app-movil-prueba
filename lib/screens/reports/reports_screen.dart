@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 
 import '../../theme/app_colors.dart';
 import '../../widgets/cards/finance_card.dart';
@@ -9,9 +9,9 @@ class ReportsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AppScreen(
+    return const AppScreen(
       title: 'Reportes',
-      children: const [
+      children: [
         _ReportFilters(),
         _ReportGrid(),
       ],
@@ -54,9 +54,12 @@ class _FilterBox extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: const TextStyle(color: AppColors.textMuted, fontSize: 11)),
+          Text(label,
+              style: const TextStyle(color: AppColors.textMuted, fontSize: 11)),
           const SizedBox(height: 4),
-          Text(value, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w800)),
+          Text(value,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontWeight: FontWeight.w800)),
         ],
       ),
     );
@@ -67,10 +70,14 @@ class _ReportGrid extends StatelessWidget {
   const _ReportGrid();
 
   static const reports = [
-    _ReportItem(Icons.category_outlined, 'Reporte por categoria', AppColors.red),
-    _ReportItem(Icons.account_balance_outlined, 'Reporte por cuenta', AppColors.blue),
-    _ReportItem(Icons.track_changes_outlined, 'Presupuesto vs. Gasto', AppColors.orange),
-    _ReportItem(Icons.currency_exchange, 'Diferencia de cambio', AppColors.green),
+    _ReportItem(
+        Icons.category_outlined, 'Reporte por categoria', AppColors.red),
+    _ReportItem(
+        Icons.account_balance_outlined, 'Reporte por cuenta', AppColors.blue),
+    _ReportItem(Icons.track_changes_outlined, 'Presupuesto vs. Gasto',
+        AppColors.orange),
+    _ReportItem(
+        Icons.currency_exchange, 'Diferencia de cambio', AppColors.green),
     _ReportItem(Icons.credit_card, 'Tarjetas de credito', AppColors.purple),
     _ReportItem(Icons.savings_outlined, 'Ahorro', AppColors.green),
   ];
@@ -98,7 +105,9 @@ class _ReportGrid extends StatelessWidget {
                 child: Icon(report.icon, color: report.color),
               ),
               const Spacer(),
-              Text(report.title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
+              Text(report.title,
+                  style: const TextStyle(
+                      fontSize: 16, fontWeight: FontWeight.w800)),
               const SizedBox(height: 8),
               const Icon(Icons.chevron_right),
             ],
