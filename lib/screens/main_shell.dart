@@ -30,6 +30,7 @@ class _MainShellState extends State<MainShell> {
       useSafeArea: true,
       isScrollControlled: true,
       showDragHandle: false,
+      barrierColor: Colors.black.withValues(alpha: 0.72),
       backgroundColor: AppColors.surface,
       builder: (context) => const AddActionSheet(),
     );

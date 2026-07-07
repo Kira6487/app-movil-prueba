@@ -13,15 +13,9 @@ import '../../services/quick_action_service.dart';
 import '../../services/transaction_service.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_radii.dart';
-import '../../theme/app_spacing.dart';
 import '../../theme/app_text_styles.dart';
 import '../../utils/date_utils.dart';
-import '../../widgets/buttons/app_primary_button.dart';
-import '../../widgets/buttons/quick_action_button.dart';
-import '../../widgets/common/app_card.dart';
 import '../../widgets/common/empty_state.dart';
-import '../../widgets/inputs/app_dropdown_field.dart';
-import '../../widgets/inputs/app_text_input.dart';
 
 class AddActionSheet extends StatefulWidget {
   const AddActionSheet({super.key});
@@ -77,17 +71,19 @@ class _AddActionSheetState extends State<AddActionSheet> {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: AppColors.surface,
+      color: const Color(0xFF121B2C),
       borderRadius: const BorderRadius.vertical(
-        top: Radius.circular(AppRadii.xl),
+        top: Radius.circular(32),
       ),
       clipBehavior: Clip.antiAlias,
+      elevation: 24,
+      shadowColor: Colors.black.withValues(alpha: 0.55),
       child: Padding(
         padding: EdgeInsets.only(
-          left: AppSpacing.xl,
-          right: AppSpacing.xl,
-          top: AppSpacing.sm,
-          bottom: MediaQuery.viewInsetsOf(context).bottom + AppSpacing.xxl,
+          left: 20,
+          right: 20,
+          top: 12,
+          bottom: MediaQuery.viewInsetsOf(context).bottom + 28,
         ),
         child: FutureBuilder<_QuickExpenseData>(
           future: _dataFuture,
@@ -99,19 +95,17 @@ class _AddActionSheetState extends State<AddActionSheet> {
                 children: [
                   Center(
                     child: Container(
-                      width: 42,
-                      height: 4,
+                      width: 56,
+                      height: 5,
                       decoration: BoxDecoration(
-                        color: AppColors.border,
+                        color: AppColors.textMuted.withValues(alpha: 0.45),
                         borderRadius: BorderRadius.circular(AppRadii.pill),
                       ),
                     ),
                   ),
-                  const SizedBox(height: AppSpacing.lg),
-                  const Text('Registrar gasto', style: AppTextStyles.title),
-                  const SizedBox(height: 4),
-                  const Text('Registro rapido', style: AppTextStyles.muted),
-                  const SizedBox(height: AppSpacing.lg),
+                  const SizedBox(height: 22),
+                  _SheetHeader(onClose: () => Navigator.of(context).pop()),
+                  const SizedBox(height: 22),
                   if (snapshot.connectionState == ConnectionState.waiting)
                     const Center(child: CircularProgressIndicator())
                   else if (snapshot.hasError)
@@ -145,135 +139,165 @@ class _AddActionSheetState extends State<AddActionSheet> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          AppCard(
-            backgroundColor: AppColors.surfaceAlt,
-            child: Column(
+          _AmountField(
+            controller: _amountController,
+            currency: _currency,
+            validator: _validateAmount,
+          ),
+          const SizedBox(height: 14),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final compact = constraints.maxWidth < 390;
+              final accountField = _ExpenseDropdownCard<AccountModel>(
+                label: 'Cuenta',
+                placeholder: 'Seleccionar cuenta',
+                icon: Icons.account_balance_outlined,
+                color: AppColors.green,
+                items: data.accounts,
+                itemLabel: (account) => account.name,
+                value: _selectedAccount,
+                onChanged: (value) {
+                  if (value == null) return;
+                  setState(() {
+                    _selectedAccount = value;
+                    _currency = value.currency;
+                  });
+                },
+                validator: (value) =>
+                    value == null ? 'Selecciona una cuenta' : null,
+              );
+              final categoryField = _ExpenseDropdownCard<CategoryModel>(
+                label: 'Categoria',
+                placeholder: 'Seleccionar categoria',
+                icon: Icons.local_offer_outlined,
+                color: AppColors.blue,
+                items: data.categories,
+                itemLabel: (category) => category.name,
+                value: _selectedCategory,
+                onChanged: (value) {
+                  setState(() => _selectedCategory = value);
+                },
+                validator: (value) =>
+                    value == null ? 'Selecciona una categoria' : null,
+              );
+
+              if (compact) {
+                return Column(
+                  children: [
+                    accountField,
+                    const SizedBox(height: 12),
+                    categoryField,
+                  ],
+                );
+              }
+
+              return Row(
+                children: [
+                  Expanded(child: accountField),
+                  const SizedBox(width: 12),
+                  Expanded(child: categoryField),
+                ],
+              );
+            },
+          ),
+          const SizedBox(height: 14),
+          _CommentField(controller: _commentController),
+          const SizedBox(height: 16),
+          _SaveExpenseButton(
+            saving: _saving,
+            onPressed: _saving ? null : _saveExpense,
+          ),
+          if (data.quickActions.isNotEmpty) ...[
+            const SizedBox(height: 24),
+            const Text('Botones rapidos', style: AppTextStyles.sectionTitle),
+            const SizedBox(height: 12),
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  for (final action in data.quickActions)
+                    Padding(
+                      padding: const EdgeInsets.only(right: 12),
+                      child: _QuickExpenseChip(
+                        icon: _iconForQuickAction(action.name),
+                        title: action.name,
+                        amount: _formatQuickAmount(action),
+                        color: _colorFromHex(action.color),
+                        onTap: () => _applyQuickAction(action, data),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            const Row(
               children: [
-                AppTextInput(
-                  label: 'Monto',
-                  hintText: '0.00',
-                  controller: _amountController,
-                  keyboardType: const TextInputType.numberWithOptions(
-                    decimal: true,
+                Icon(Icons.edit_outlined, color: AppColors.textMuted, size: 18),
+                SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Toca para registrar. Puedes editar el monto despues.',
+                    style: AppTextStyles.muted,
                   ),
-                  prefixIcon: Icons.payments_outlined,
-                  validator: _validateAmount,
-                ),
-                const SizedBox(height: 12),
-                AppDropdownField<AccountModel>(
-                  label: 'Cuenta',
-                  items: data.accounts,
-                  itemLabel: (account) =>
-                      '${account.name} - ${account.currency}',
-                  value: _selectedAccount,
-                  prefixIcon: Icons.account_balance_wallet_outlined,
-                  onChanged: (value) {
-                    if (value == null) return;
-                    setState(() {
-                      _selectedAccount = value;
-                      _currency = value.currency;
-                    });
-                  },
-                  validator: (value) =>
-                      value == null ? 'Selecciona una cuenta' : null,
-                ),
-                const SizedBox(height: 12),
-                AppDropdownField<CategoryModel>(
-                  label: 'Categoria',
-                  items: data.categories,
-                  itemLabel: (category) => category.name,
-                  value: _selectedCategory,
-                  prefixIcon: Icons.category_outlined,
-                  onChanged: (value) {
-                    setState(() => _selectedCategory = value);
-                  },
-                  validator: (value) =>
-                      value == null ? 'Selecciona una categoria' : null,
-                ),
-                const SizedBox(height: 12),
-                AppTextInput(
-                  label: 'Comentario opcional',
-                  controller: _commentController,
-                  prefixIcon: Icons.notes_outlined,
-                ),
-                const SizedBox(height: 16),
-                AppPrimaryButton(
-                  label: _saving ? 'Guardando...' : 'Guardar gasto',
-                  icon: Icons.save_outlined,
-                  onPressed: _saving ? null : _saveExpense,
                 ),
               ],
             ),
-          ),
-          if (data.quickActions.isNotEmpty) ...[
-            const SizedBox(height: AppSpacing.lg),
-            const Text('Botones rapidos', style: AppTextStyles.sectionTitle),
-            const SizedBox(height: 10),
-            for (final action in data.quickActions)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: QuickActionButton(
-                  icon: _iconForQuickAction(action.name),
-                  title: action.name,
+          ],
+          const SizedBox(height: 24),
+          const Text('Mas acciones', style: AppTextStyles.sectionTitle),
+          const SizedBox(height: 12),
+          GridView.count(
+            crossAxisCount: 2,
+            childAspectRatio: 1.65,
+            mainAxisSpacing: 12,
+            crossAxisSpacing: 12,
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            children: [
+              _SecondaryActionTile(
+                icon: Icons.arrow_upward,
+                title: 'Registrar ingreso',
+                color: AppColors.green,
+                onTap: () => _openIncome(context),
+              ),
+              _SecondaryActionTile(
+                icon: Icons.sync_alt,
+                title: 'Transferencia',
+                color: AppColors.blue,
+                onTap: () => _openPlaceholder(
+                  context,
+                  title: 'Transferencia',
                   description:
-                      '${action.currency} ${action.amount.toStringAsFixed(2)}',
-                  color: _colorFromHex(action.color),
-                  onTap: () => _applyQuickAction(action, data),
+                      'La transferencia funcional se implementara mas adelante.',
+                  icon: Icons.swap_horiz,
+                  color: AppColors.blue,
                 ),
               ),
-          ],
-          const SizedBox(height: AppSpacing.lg),
-          const Text('Mas acciones', style: AppTextStyles.sectionTitle),
-          const SizedBox(height: 10),
-          QuickActionButton(
-            icon: Icons.add_circle_outline,
-            title: 'Registrar ingreso',
-            description: 'Abrir flujo real de ingreso',
-            color: AppColors.green,
-            onTap: () => _openIncome(context),
-          ),
-          const SizedBox(height: 8),
-          QuickActionButton(
-            icon: Icons.swap_horiz,
-            title: 'Transferencia',
-            description: 'Flujo pendiente',
-            color: AppColors.blue,
-            onTap: () => _openPlaceholder(
-              context,
-              title: 'Transferencia',
-              description:
-                  'La transferencia funcional se implementara mas adelante.',
-              icon: Icons.swap_horiz,
-              color: AppColors.blue,
-            ),
-          ),
-          const SizedBox(height: 8),
-          QuickActionButton(
-            icon: Icons.event_available_outlined,
-            title: 'Pago programado',
-            description: 'Proximamente',
-            color: AppColors.orange,
-            onTap: () => _openPlaceholder(
-              context,
-              title: 'Pago programado',
-              description: 'No disponible en demo.',
-              icon: Icons.event_available_outlined,
-              color: AppColors.orange,
-            ),
-          ),
-          const SizedBox(height: 8),
-          QuickActionButton(
-            icon: Icons.savings_outlined,
-            title: 'Ahorro',
-            description: 'Proximamente',
-            color: AppColors.purple,
-            onTap: () => _openPlaceholder(
-              context,
-              title: 'Ahorro',
-              description: 'No disponible en demo.',
-              icon: Icons.savings_outlined,
-              color: AppColors.purple,
-            ),
+              _SecondaryActionTile(
+                icon: Icons.calendar_month_outlined,
+                title: 'Pago programado',
+                color: AppColors.orange,
+                onTap: () => _openPlaceholder(
+                  context,
+                  title: 'Pago programado',
+                  description: 'No disponible en demo.',
+                  icon: Icons.event_available_outlined,
+                  color: AppColors.orange,
+                ),
+              ),
+              _SecondaryActionTile(
+                icon: Icons.savings_outlined,
+                title: 'Ahorro',
+                color: AppColors.purple,
+                onTap: () => _openPlaceholder(
+                  context,
+                  title: 'Ahorro',
+                  description: 'No disponible en demo.',
+                  icon: Icons.savings_outlined,
+                  color: AppColors.purple,
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -381,6 +405,13 @@ class _AddActionSheetState extends State<AddActionSheet> {
     return value.toStringAsFixed(2);
   }
 
+  String _formatQuickAmount(QuickActionModel action) {
+    final amount = action.amount == action.amount.roundToDouble()
+        ? action.amount.toStringAsFixed(0)
+        : action.amount.toStringAsFixed(2);
+    return action.currency == 'USD' ? '\$$amount' : 'S/ $amount';
+  }
+
   T? _findById<T>(List<T> items, int? id) {
     if (id == null) return null;
     for (final item in items) {
@@ -409,6 +440,493 @@ class _AddActionSheetState extends State<AddActionSheet> {
     }
     return Color(int.parse(value.substring(1), radix: 16) + 0xFF000000);
   }
+}
+
+class _SheetHeader extends StatelessWidget {
+  const _SheetHeader({required this.onClose});
+
+  final VoidCallback onClose;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Container(
+          width: 54,
+          height: 54,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: const LinearGradient(
+              colors: [Color(0xFF22C55E), Color(0xFF15803D)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.green.withValues(alpha: 0.26),
+                blurRadius: 18,
+                offset: const Offset(0, 8),
+              ),
+            ],
+          ),
+          child: const Icon(
+            Icons.account_balance_wallet_outlined,
+            color: Colors.white,
+            size: 28,
+          ),
+        ),
+        const SizedBox(width: 16),
+        const Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Registrar gasto', style: AppTextStyles.title),
+              SizedBox(height: 3),
+              Text('Registro rapido', style: AppTextStyles.muted),
+            ],
+          ),
+        ),
+        Material(
+          color: AppColors.surfaceAlt.withValues(alpha: 0.88),
+          shape: const CircleBorder(),
+          child: InkWell(
+            customBorder: const CircleBorder(),
+            onTap: onClose,
+            child: const SizedBox(
+              width: 48,
+              height: 48,
+              child: Icon(Icons.close, color: AppColors.textPrimary),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _AmountField extends StatelessWidget {
+  const _AmountField({
+    required this.controller,
+    required this.currency,
+    required this.validator,
+  });
+
+  final TextEditingController controller;
+  final String currency;
+  final FormFieldValidator<String> validator;
+
+  @override
+  Widget build(BuildContext context) {
+    final prefix = currency == 'USD' ? r'$' : 'S/';
+    return Container(
+      padding: const EdgeInsets.fromLTRB(18, 14, 18, 14),
+      decoration: _panelDecoration(),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Monto', style: AppTextStyles.muted.copyWith(fontSize: 15)),
+          const SizedBox(height: 2),
+          Row(
+            children: [
+              Text(
+                prefix,
+                style: AppTextStyles.display.copyWith(
+                  color: AppColors.green,
+                  fontSize: 42,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: TextFormField(
+                  controller: controller,
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
+                  validator: validator,
+                  style: AppTextStyles.display.copyWith(
+                    color: AppColors.textPrimary.withValues(alpha: 0.72),
+                    fontSize: 42,
+                    fontWeight: FontWeight.w900,
+                  ),
+                  decoration: const InputDecoration(
+                    hintText: '0.00',
+                    border: InputBorder.none,
+                    enabledBorder: InputBorder.none,
+                    focusedBorder: InputBorder.none,
+                    errorBorder: InputBorder.none,
+                    focusedErrorBorder: InputBorder.none,
+                    isDense: true,
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                ),
+              ),
+              Container(
+                width: 54,
+                height: 54,
+                decoration: BoxDecoration(
+                  color: AppColors.surfaceAlt.withValues(alpha: 0.88),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: AppColors.border.withValues(alpha: 0.75),
+                  ),
+                ),
+                child: const Icon(
+                  Icons.calculate_outlined,
+                  color: AppColors.blue,
+                  size: 28,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ExpenseDropdownCard<T> extends StatelessWidget {
+  const _ExpenseDropdownCard({
+    required this.label,
+    required this.placeholder,
+    required this.icon,
+    required this.color,
+    required this.items,
+    required this.itemLabel,
+    required this.value,
+    required this.onChanged,
+    required this.validator,
+  });
+
+  final String label;
+  final String placeholder;
+  final IconData icon;
+  final Color color;
+  final List<T> items;
+  final String Function(T item) itemLabel;
+  final T? value;
+  final ValueChanged<T?> onChanged;
+  final FormFieldValidator<T> validator;
+
+  @override
+  Widget build(BuildContext context) {
+    return DropdownButtonFormField<T>(
+      initialValue: value,
+      isExpanded: true,
+      icon: const Icon(Icons.keyboard_arrow_down, color: AppColors.textPrimary),
+      decoration: InputDecoration(
+        filled: true,
+        fillColor: AppColors.surfaceAlt.withValues(alpha: 0.32),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(18),
+          borderSide: BorderSide(
+            color: AppColors.border.withValues(alpha: 0.75),
+          ),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(18),
+          borderSide: BorderSide(
+            color: AppColors.border.withValues(alpha: 0.75),
+          ),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(18),
+          borderSide: BorderSide(color: color.withValues(alpha: 0.85)),
+        ),
+      ),
+      selectedItemBuilder: (context) {
+        return [
+          for (final item in items)
+            _DropdownFace(
+              label: label,
+              value: itemLabel(item),
+              icon: icon,
+              color: color,
+            ),
+        ];
+      },
+      items: [
+        for (final item in items)
+          DropdownMenuItem<T>(
+            value: item,
+            child: Text(itemLabel(item), overflow: TextOverflow.ellipsis),
+          ),
+      ],
+      hint: _DropdownFace(
+        label: label,
+        value: placeholder,
+        icon: icon,
+        color: color,
+      ),
+      onChanged: onChanged,
+      validator: validator,
+    );
+  }
+}
+
+class _DropdownFace extends StatelessWidget {
+  const _DropdownFace({
+    required this.label,
+    required this.value,
+    required this.icon,
+    required this.color,
+  });
+
+  final String label;
+  final String value;
+  final IconData icon;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        CircleAvatar(
+          radius: 22,
+          backgroundColor: color.withValues(alpha: 0.18),
+          child: Icon(icon, color: color),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(label, style: AppTextStyles.muted),
+              const SizedBox(height: 2),
+              Text(
+                value,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AppTextStyles.body.copyWith(
+                  color: AppColors.textPrimary.withValues(alpha: 0.78),
+                  fontSize: 15,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _CommentField extends StatelessWidget {
+  const _CommentField({required this.controller});
+
+  final TextEditingController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+      decoration: _panelDecoration(),
+      child: TextFormField(
+        controller: controller,
+        style: AppTextStyles.body,
+        decoration: InputDecoration(
+          labelText: 'Comentario (opcional)',
+          hintText: 'En que lo gastaste?',
+          suffixIcon: Icon(
+            Icons.chat_bubble_outline,
+            color: AppColors.textPrimary.withValues(alpha: 0.82),
+          ),
+          border: InputBorder.none,
+          enabledBorder: InputBorder.none,
+          focusedBorder: InputBorder.none,
+        ),
+      ),
+    );
+  }
+}
+
+class _SaveExpenseButton extends StatelessWidget {
+  const _SaveExpenseButton({
+    required this.saving,
+    required this.onPressed,
+  });
+
+  final bool saving;
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(18),
+      child: Ink(
+        height: 58,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(18),
+          gradient: const LinearGradient(
+            colors: [Color(0xFF22C55E), Color(0xFF15803D)],
+            begin: Alignment.centerLeft,
+            end: Alignment.centerRight,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.green.withValues(alpha: 0.22),
+              blurRadius: 18,
+              offset: const Offset(0, 10),
+            ),
+          ],
+        ),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(18),
+          onTap: onPressed,
+          child: Center(
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(
+                  Icons.account_balance_wallet_outlined,
+                  color: Colors.white,
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  saving ? 'Guardando...' : 'Guardar gasto',
+                  style: AppTextStyles.cardTitle.copyWith(color: Colors.white),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _QuickExpenseChip extends StatelessWidget {
+  const _QuickExpenseChip({
+    required this.icon,
+    required this.title,
+    required this.amount,
+    required this.color,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String title;
+  final String amount;
+  final Color color;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: color.withValues(alpha: 0.13),
+      borderRadius: BorderRadius.circular(20),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(20),
+        onTap: onTap,
+        child: Container(
+          width: 126,
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: color.withValues(alpha: 0.72)),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircleAvatar(
+                radius: 22,
+                backgroundColor: color.withValues(alpha: 0.28),
+                child: Icon(icon, color: color),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTextStyles.body.copyWith(
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      amount,
+                      style: AppTextStyles.body.copyWith(color: color),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SecondaryActionTile extends StatelessWidget {
+  const _SecondaryActionTile({
+    required this.icon,
+    required this.title,
+    required this.color,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String title;
+  final Color color;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: AppColors.surfaceAlt.withValues(alpha: 0.35),
+      borderRadius: BorderRadius.circular(18),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(18),
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(
+              color: AppColors.border.withValues(alpha: 0.58),
+            ),
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              CircleAvatar(
+                radius: 25,
+                backgroundColor: color.withValues(alpha: 0.2),
+                child: Icon(icon, color: color),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                title,
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: AppTextStyles.body.copyWith(
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+BoxDecoration _panelDecoration() {
+  return BoxDecoration(
+    color: AppColors.surfaceAlt.withValues(alpha: 0.28),
+    borderRadius: BorderRadius.circular(20),
+    border: Border.all(color: AppColors.border.withValues(alpha: 0.68)),
+  );
 }
 
 class _QuickExpenseData {
