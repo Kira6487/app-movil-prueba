@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 
 import '../../models/budget_rule_model.dart';
 import '../../models/budget_summary_model.dart';
@@ -57,7 +57,8 @@ class _BudgetFormScreenState extends State<BudgetFormScreen> {
       _startDate = DateTime.tryParse(initial.startDate ?? '') ?? DateTime.now();
       _endDate = DateTime.tryParse(initial.endDate ?? '');
       _isActive = initial.isActive;
-      _selectedWeekdays.addAll(BudgetCalculator.parseWeekdays(initial.selectedWeekdays));
+      _selectedWeekdays
+          .addAll(BudgetCalculator.parseWeekdays(initial.selectedWeekdays));
     }
   }
 
@@ -119,9 +120,10 @@ class _BudgetFormScreenState extends State<BudgetFormScreen> {
                       label: 'Nombre del presupuesto',
                       controller: _nameController,
                       prefixIcon: Icons.edit_outlined,
-                      validator: (value) => value == null || value.trim().isEmpty
-                          ? 'Ingresa un nombre'
-                          : null,
+                      validator: (value) =>
+                          value == null || value.trim().isEmpty
+                              ? 'Ingresa un nombre'
+                              : null,
                     ),
                     const SizedBox(height: 14),
                     AppDropdownField<CategoryModel>(
@@ -130,15 +132,18 @@ class _BudgetFormScreenState extends State<BudgetFormScreen> {
                       itemLabel: (category) => category.name,
                       value: _selectedCategory,
                       prefixIcon: Icons.category_outlined,
-                      onChanged: (value) => setState(() => _selectedCategory = value),
-                      validator: (value) => value == null ? 'Selecciona una categoria' : null,
+                      onChanged: (value) =>
+                          setState(() => _selectedCategory = value),
+                      validator: (value) =>
+                          value == null ? 'Selecciona una categoria' : null,
                     ),
                     const SizedBox(height: 14),
                     AppTextInput(
                       label: 'Monto',
                       hintText: '0.00',
                       controller: _amountController,
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      keyboardType:
+                          const TextInputType.numberWithOptions(decimal: true),
                       prefixIcon: Icons.payments_outlined,
                       validator: _validateAmount,
                     ),
@@ -149,7 +154,8 @@ class _BudgetFormScreenState extends State<BudgetFormScreen> {
                       itemLabel: (currency) => currency,
                       value: _currency,
                       prefixIcon: Icons.currency_exchange,
-                      onChanged: (value) => setState(() => _currency = value ?? 'SOL'),
+                      onChanged: (value) =>
+                          setState(() => _currency = value ?? 'SOL'),
                     ),
                     const SizedBox(height: 14),
                     AppDropdownField<String>(
@@ -158,9 +164,11 @@ class _BudgetFormScreenState extends State<BudgetFormScreen> {
                       itemLabel: BudgetRecurrenceType.label,
                       value: _recurrenceType,
                       prefixIcon: Icons.repeat,
-                      onChanged: (value) => setState(() => _recurrenceType = value ?? BudgetRecurrenceType.onceThisMonth),
+                      onChanged: (value) => setState(() => _recurrenceType =
+                          value ?? BudgetRecurrenceType.onceThisMonth),
                     ),
-                    if (_recurrenceType == BudgetRecurrenceType.customWeekdays) ...[
+                    if (_recurrenceType ==
+                        BudgetRecurrenceType.customWeekdays) ...[
                       const SizedBox(height: 14),
                       _WeekdaySelector(
                         selected: _selectedWeekdays,
@@ -176,7 +184,8 @@ class _BudgetFormScreenState extends State<BudgetFormScreen> {
                     const SizedBox(height: 14),
                     AppTextInput(
                       label: 'Fecha inicial',
-                      controller: TextEditingController(text: _formatDate(_startDate)),
+                      controller:
+                          TextEditingController(text: _formatDate(_startDate)),
                       readOnly: true,
                       prefixIcon: Icons.calendar_today_outlined,
                       suffixIcon: const Icon(Icons.expand_more),
@@ -185,7 +194,8 @@ class _BudgetFormScreenState extends State<BudgetFormScreen> {
                     const SizedBox(height: 14),
                     AppTextInput(
                       label: 'Fecha final opcional',
-                      controller: TextEditingController(text: _endDate == null ? '' : _formatDate(_endDate!)),
+                      controller: TextEditingController(
+                          text: _endDate == null ? '' : _formatDate(_endDate!)),
                       readOnly: true,
                       prefixIcon: Icons.event_busy_outlined,
                       suffixIcon: _endDate == null
@@ -200,7 +210,8 @@ class _BudgetFormScreenState extends State<BudgetFormScreen> {
                     SwitchListTile(
                       contentPadding: EdgeInsets.zero,
                       title: const Text('Activo'),
-                      subtitle: const Text('Incluir este presupuesto en los calculos'),
+                      subtitle: const Text(
+                          'Incluir este presupuesto en los calculos'),
                       value: _isActive,
                       onChanged: (value) => setState(() => _isActive = value),
                     ),
@@ -210,7 +221,9 @@ class _BudgetFormScreenState extends State<BudgetFormScreen> {
                         Expanded(
                           child: AppSecondaryButton(
                             label: 'Cancelar',
-                            onPressed: _saving ? null : () => Navigator.of(context).pop(),
+                            onPressed: _saving
+                                ? null
+                                : () => Navigator.of(context).pop(),
                           ),
                         ),
                         const SizedBox(width: 12),
@@ -267,9 +280,11 @@ class _BudgetFormScreenState extends State<BudgetFormScreen> {
 
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
-    if (_recurrenceType == BudgetRecurrenceType.customWeekdays && _selectedWeekdays.isEmpty) {
+    if (_recurrenceType == BudgetRecurrenceType.customWeekdays &&
+        _selectedWeekdays.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Selecciona al menos un dia personalizado')),
+        const SnackBar(
+            content: Text('Selecciona al menos un dia personalizado')),
       );
       return;
     }
@@ -376,7 +391,7 @@ class _WeekdaySelector extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Dias personalizados', style: AppTextStyles.cardTitle),
+          const Text('Dias personalizados', style: AppTextStyles.cardTitle),
           const SizedBox(height: 10),
           Wrap(
             spacing: 8,

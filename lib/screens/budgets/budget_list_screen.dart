@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 
 import '../../models/budget_summary_model.dart';
 import '../../providers/budget_change_notifier.dart';
@@ -8,7 +8,6 @@ import '../../theme/app_colors.dart';
 import '../../theme/app_text_styles.dart';
 import '../../utils/currency_formatter.dart';
 import '../../widgets/buttons/app_primary_button.dart';
-import '../../widgets/buttons/app_secondary_button.dart';
 import '../../widgets/common/app_card.dart';
 import '../../widgets/common/app_scaffold.dart';
 import '../../widgets/common/empty_state.dart';
@@ -81,7 +80,8 @@ class BudgetListScreen extends StatelessWidget {
                 if (rules.isEmpty) {
                   return const EmptyState(
                     title: 'No hay presupuestos configurados',
-                    message: 'Crea tu primer presupuesto para calcular estados reales.',
+                    message:
+                        'Crea tu primer presupuesto para calcular estados reales.',
                     icon: Icons.track_changes_outlined,
                   );
                 }
@@ -114,12 +114,25 @@ class _BudgetTotalsCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Total presupuestado del mes', style: AppTextStyles.sectionTitle),
+          const Text(
+            'Total presupuestado del mes',
+            style: AppTextStyles.sectionTitle,
+          ),
           const SizedBox(height: 12),
-          _Metric(label: 'Presupuesto mensual', value: formatSol(overview.monthBudget)),
-          _Metric(label: 'Presupuesto acumulado', value: formatSol(overview.accumulatedBudget)),
-          _Metric(label: 'Gasto real del mes', value: formatSol(overview.monthSpent), color: AppColors.red),
-          _Metric(label: 'Disponible', value: formatSol(overview.available), color: overview.available >= 0 ? AppColors.green : AppColors.red),
+          _Metric(
+              label: 'Presupuesto mensual',
+              value: formatSol(overview.monthBudget)),
+          _Metric(
+              label: 'Presupuesto acumulado',
+              value: formatSol(overview.accumulatedBudget)),
+          _Metric(
+              label: 'Gasto real del mes',
+              value: formatSol(overview.monthSpent),
+              color: AppColors.red),
+          _Metric(
+              label: 'Disponible',
+              value: formatSol(overview.available),
+              color: overview.available >= 0 ? AppColors.green : AppColors.red),
         ],
       ),
     );
@@ -136,7 +149,8 @@ class _BudgetRuleCard extends StatelessWidget {
     final rule = view.rule;
     return AppCard(
       onTap: () => Navigator.of(context).push(
-        MaterialPageRoute<void>(builder: (_) => BudgetFormScreen(initial: view)),
+        MaterialPageRoute<void>(
+            builder: (_) => BudgetFormScreen(initial: view)),
       ),
       child: Row(
         children: [
@@ -145,7 +159,9 @@ class _BudgetRuleCard extends StatelessWidget {
                 ? AppColors.blue.withValues(alpha: 0.16)
                 : AppColors.textMuted.withValues(alpha: 0.16),
             child: Icon(
-              rule.isActive ? Icons.track_changes_outlined : Icons.pause_circle_outline,
+              rule.isActive
+                  ? Icons.track_changes_outlined
+                  : Icons.pause_circle_outline,
               color: rule.isActive ? AppColors.blue : AppColors.textMuted,
             ),
           ),
@@ -158,7 +174,8 @@ class _BudgetRuleCard extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(view.categoryName, style: AppTextStyles.muted),
                 const SizedBox(height: 4),
-                Text(BudgetRecurrenceType.label(rule.recurrenceType), style: AppTextStyles.muted),
+                Text(BudgetRecurrenceType.label(rule.recurrenceType),
+                    style: AppTextStyles.muted),
               ],
             ),
           ),
@@ -166,9 +183,11 @@ class _BudgetRuleCard extends StatelessWidget {
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Text(_formatAmount(rule.currency, rule.amount), style: AppTextStyles.amount),
+              Text(_formatAmount(rule.currency, rule.amount),
+                  style: AppTextStyles.amount),
               const SizedBox(height: 4),
-              Text(rule.isActive ? 'Activo' : 'Inactivo', style: AppTextStyles.label),
+              Text(rule.isActive ? 'Activo' : 'Inactivo',
+                  style: AppTextStyles.label),
             ],
           ),
         ],
@@ -195,7 +214,9 @@ class _Metric extends StatelessWidget {
       child: Row(
         children: [
           Expanded(child: Text(label, style: AppTextStyles.muted)),
-          Text(value, style: AppTextStyles.body.copyWith(color: color, fontWeight: FontWeight.w900)),
+          Text(value,
+              style: AppTextStyles.body
+                  .copyWith(color: color, fontWeight: FontWeight.w900)),
         ],
       ),
     );

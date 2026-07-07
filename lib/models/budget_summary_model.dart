@@ -1,4 +1,4 @@
-﻿import 'budget_rule_model.dart';
+import 'budget_rule_model.dart';
 
 class BudgetRuleView {
   const BudgetRuleView({
@@ -52,8 +52,10 @@ class BudgetOverview {
   final int rulesCount;
 
   double get available => monthBudget - monthSpent;
-  double get monthUsagePercent => monthBudget <= 0 ? 0 : monthSpent / monthBudget;
-  double get accumulatedUsagePercent => accumulatedBudget <= 0 ? 0 : accumulatedSpent / accumulatedBudget;
+  double get monthUsagePercent =>
+      monthBudget <= 0 ? 0 : monthSpent / monthBudget;
+  double get accumulatedUsagePercent =>
+      accumulatedBudget <= 0 ? 0 : accumulatedSpent / accumulatedBudget;
 
   BudgetStatus get dailyStatus => BudgetStatus.from(
         spent: accumulatedSpent,

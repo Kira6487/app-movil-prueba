@@ -1,4 +1,4 @@
-﻿import '../database/app_database.dart';
+import '../database/app_database.dart';
 import '../models/budget_rule_model.dart';
 import '../models/budget_summary_model.dart';
 import 'budget_calculator.dart';
@@ -147,9 +147,10 @@ ORDER BY b.created_at DESC, b.id DESC
     return BudgetOverview(
       monthBudget: monthBudget,
       accumulatedBudget: accumulatedBudget,
-      monthSpent: monthSpentByCategory.values.fold(0, (sum, value) => sum + value),
-      accumulatedSpent:
-          accumulatedSpentByCategory.values.fold(0, (sum, value) => sum + value),
+      monthSpent:
+          monthSpentByCategory.values.fold(0, (sum, value) => sum + value),
+      accumulatedSpent: accumulatedSpentByCategory.values
+          .fold(0, (sum, value) => sum + value),
       categories: categories,
       rulesCount: rules.length,
     );

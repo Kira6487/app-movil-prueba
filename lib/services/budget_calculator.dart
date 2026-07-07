@@ -1,4 +1,4 @@
-﻿import '../models/budget_rule_model.dart';
+import '../models/budget_rule_model.dart';
 import '../models/budget_summary_model.dart';
 
 class BudgetRecurrenceType {
@@ -56,7 +56,8 @@ class BudgetCalculator {
     int month,
     DateTime until,
   ) {
-    return occurrencesForMonth(rule, year, month, until: until).length * rule.amount;
+    return occurrencesForMonth(rule, year, month, until: until).length *
+        rule.amount;
   }
 
   static List<DateTime> occurrencesForDate(
@@ -89,7 +90,8 @@ class BudgetCalculator {
         : _minDate(monthEnd, DateTime(until.year, until.month, until.day));
     final start = _parseDate(rule.startDate) ?? monthStart;
     final end = _parseDate(rule.endDate);
-    final rangeStart = _maxDate(monthStart, DateTime(start.year, start.month, start.day));
+    final rangeStart =
+        _maxDate(monthStart, DateTime(start.year, start.month, start.day));
     final rangeEnd = end == null
         ? effectiveEnd
         : _minDate(effectiveEnd, DateTime(end.year, end.month, end.day));
@@ -97,15 +99,19 @@ class BudgetCalculator {
     if (rangeEnd.isBefore(rangeStart)) return const [];
 
     return switch (rule.recurrenceType) {
-      BudgetRecurrenceType.onceThisMonth => _onceThisMonth(rule, year, month, rangeStart, rangeEnd),
+      BudgetRecurrenceType.onceThisMonth =>
+        _onceThisMonth(rule, year, month, rangeStart, rangeEnd),
       BudgetRecurrenceType.monthly => [rangeStart],
-      BudgetRecurrenceType.weeklyOnce => _daysByWeekday(rangeStart, rangeEnd, start.weekday),
-      BudgetRecurrenceType.customWeekdays => _customWeekdays(rule, rangeStart, rangeEnd),
+      BudgetRecurrenceType.weeklyOnce =>
+        _daysByWeekday(rangeStart, rangeEnd, start.weekday),
+      BudgetRecurrenceType.customWeekdays =>
+        _customWeekdays(rule, rangeStart, rangeEnd),
       _ => _weekdayRule(rule, rangeStart, rangeEnd),
     };
   }
 
-  static BudgetStatus statusFor({required double spent, required double budget}) {
+  static BudgetStatus statusFor(
+      {required double spent, required double budget}) {
     return BudgetStatus.from(spent: spent, budget: budget);
   }
 
@@ -149,7 +155,7 @@ class BudgetCalculator {
     DateTime rangeStart,
     DateTime rangeEnd,
   ) {
-    final prefix = 'weekday_';
+    const prefix = 'weekday_';
     if (!rule.recurrenceType.startsWith(prefix)) return const [];
     final weekday = int.tryParse(rule.recurrenceType.substring(prefix.length));
     if (weekday == null) return const [];
