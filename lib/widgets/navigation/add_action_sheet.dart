@@ -89,6 +89,9 @@ class _AddActionSheetState extends State<AddActionSheet> {
           future: _dataFuture,
           builder: (context, snapshot) {
             return SingleChildScrollView(
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.paddingOf(context).bottom + 88,
+              ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -211,22 +214,24 @@ class _AddActionSheetState extends State<AddActionSheet> {
             const SizedBox(height: 24),
             const Text('Botones rapidos', style: AppTextStyles.sectionTitle),
             const SizedBox(height: 12),
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: [
-                  for (final action in data.quickActions)
-                    Padding(
-                      padding: const EdgeInsets.only(right: 12),
-                      child: _QuickExpenseChip(
-                        icon: _iconForQuickAction(action.name),
-                        title: action.name,
-                        amount: _formatQuickAmount(action),
-                        color: _colorFromHex(action.color),
-                        onTap: () => _applyQuickAction(action, data),
-                      ),
-                    ),
-                ],
+            SizedBox(
+              height: 78,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                clipBehavior: Clip.none,
+                padding: const EdgeInsets.symmetric(horizontal: 2),
+                itemCount: data.quickActions.length,
+                separatorBuilder: (_, __) => const SizedBox(width: 12),
+                itemBuilder: (context, index) {
+                  final action = data.quickActions[index];
+                  return _QuickExpenseChip(
+                    icon: _iconForQuickAction(action.name),
+                    title: action.name,
+                    amount: _formatQuickAmount(action),
+                    color: _colorFromHex(action.color),
+                    onTap: () => _applyQuickAction(action, data),
+                  );
+                },
               ),
             ),
             const SizedBox(height: 12),
@@ -246,58 +251,63 @@ class _AddActionSheetState extends State<AddActionSheet> {
           const SizedBox(height: 24),
           const Text('Mas acciones', style: AppTextStyles.sectionTitle),
           const SizedBox(height: 12),
-          GridView.count(
-            crossAxisCount: 2,
-            childAspectRatio: 1.65,
-            mainAxisSpacing: 12,
-            crossAxisSpacing: 12,
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            children: [
-              _SecondaryActionTile(
-                icon: Icons.arrow_upward,
-                title: 'Registrar ingreso',
-                color: AppColors.green,
-                onTap: () => _openIncome(context),
-              ),
-              _SecondaryActionTile(
-                icon: Icons.sync_alt,
-                title: 'Transferencia',
-                color: AppColors.blue,
-                onTap: () => _openPlaceholder(
-                  context,
-                  title: 'Transferencia',
-                  description:
-                      'La transferencia funcional se implementara mas adelante.',
-                  icon: Icons.swap_horiz,
-                  color: AppColors.blue,
-                ),
-              ),
-              _SecondaryActionTile(
-                icon: Icons.calendar_month_outlined,
-                title: 'Pago programado',
-                color: AppColors.orange,
-                onTap: () => _openPlaceholder(
-                  context,
-                  title: 'Pago programado',
-                  description: 'No disponible en demo.',
-                  icon: Icons.event_available_outlined,
-                  color: AppColors.orange,
-                ),
-              ),
-              _SecondaryActionTile(
-                icon: Icons.savings_outlined,
-                title: 'Ahorro',
-                color: AppColors.purple,
-                onTap: () => _openPlaceholder(
-                  context,
-                  title: 'Ahorro',
-                  description: 'No disponible en demo.',
-                  icon: Icons.savings_outlined,
-                  color: AppColors.purple,
-                ),
-              ),
-            ],
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final compact = constraints.maxWidth < 360;
+              return GridView.count(
+                crossAxisCount: compact ? 1 : 2,
+                mainAxisExtent: 118,
+                mainAxisSpacing: 12,
+                crossAxisSpacing: 12,
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                children: [
+                  _SecondaryActionTile(
+                    icon: Icons.arrow_upward,
+                    title: 'Registrar ingreso',
+                    color: AppColors.green,
+                    onTap: () => _openIncome(context),
+                  ),
+                  _SecondaryActionTile(
+                    icon: Icons.sync_alt,
+                    title: 'Transferencia',
+                    color: AppColors.blue,
+                    onTap: () => _openPlaceholder(
+                      context,
+                      title: 'Transferencia',
+                      description:
+                          'La transferencia funcional se implementara mas adelante.',
+                      icon: Icons.swap_horiz,
+                      color: AppColors.blue,
+                    ),
+                  ),
+                  _SecondaryActionTile(
+                    icon: Icons.calendar_month_outlined,
+                    title: 'Pago programado',
+                    color: AppColors.orange,
+                    onTap: () => _openPlaceholder(
+                      context,
+                      title: 'Pago programado',
+                      description: 'No disponible en demo.',
+                      icon: Icons.event_available_outlined,
+                      color: AppColors.orange,
+                    ),
+                  ),
+                  _SecondaryActionTile(
+                    icon: Icons.savings_outlined,
+                    title: 'Ahorro',
+                    color: AppColors.purple,
+                    onTap: () => _openPlaceholder(
+                      context,
+                      title: 'Ahorro',
+                      description: 'No disponible en demo.',
+                      icon: Icons.savings_outlined,
+                      color: AppColors.purple,
+                    ),
+                  ),
+                ],
+              );
+            },
           ),
         ],
       ),
@@ -519,24 +529,26 @@ class _AmountField extends StatelessWidget {
   Widget build(BuildContext context) {
     final prefix = currency == 'USD' ? r'$' : 'S/';
     return Container(
-      padding: const EdgeInsets.fromLTRB(18, 14, 18, 14),
+      padding: const EdgeInsets.fromLTRB(18, 12, 14, 12),
       decoration: _panelDecoration(),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text('Monto', style: AppTextStyles.muted.copyWith(fontSize: 15)),
-          const SizedBox(height: 2),
+          const SizedBox(height: 4),
           Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               Text(
                 prefix,
                 style: AppTextStyles.display.copyWith(
                   color: AppColors.green,
-                  fontSize: 42,
+                  fontSize: 36,
                   fontWeight: FontWeight.w900,
+                  height: 1,
                 ),
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: 8),
               Expanded(
                 child: TextFormField(
                   controller: controller,
@@ -546,11 +558,14 @@ class _AmountField extends StatelessWidget {
                   validator: validator,
                   style: AppTextStyles.display.copyWith(
                     color: AppColors.textPrimary.withValues(alpha: 0.72),
-                    fontSize: 42,
+                    fontSize: 36,
                     fontWeight: FontWeight.w900,
+                    height: 1,
                   ),
                   decoration: const InputDecoration(
                     hintText: '0.00',
+                    filled: false,
+                    fillColor: Colors.transparent,
                     border: InputBorder.none,
                     enabledBorder: InputBorder.none,
                     focusedBorder: InputBorder.none,
@@ -562,8 +577,8 @@ class _AmountField extends StatelessWidget {
                 ),
               ),
               Container(
-                width: 54,
-                height: 54,
+                width: 50,
+                height: 50,
                 decoration: BoxDecoration(
                   color: AppColors.surfaceAlt.withValues(alpha: 0.88),
                   borderRadius: BorderRadius.circular(16),
@@ -617,8 +632,9 @@ class _ExpenseDropdownCard<T> extends StatelessWidget {
       decoration: InputDecoration(
         filled: true,
         fillColor: AppColors.surfaceAlt.withValues(alpha: 0.32),
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        isDense: false,
+        constraints: const BoxConstraints(minHeight: 78),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(18),
           borderSide: BorderSide(
@@ -639,11 +655,14 @@ class _ExpenseDropdownCard<T> extends StatelessWidget {
       selectedItemBuilder: (context) {
         return [
           for (final item in items)
-            _DropdownFace(
-              label: label,
-              value: itemLabel(item),
-              icon: icon,
-              color: color,
+            SizedBox(
+              height: 58,
+              child: _DropdownFace(
+                label: label,
+                value: itemLabel(item),
+                icon: icon,
+                color: color,
+              ),
             ),
         ];
       },
@@ -654,11 +673,14 @@ class _ExpenseDropdownCard<T> extends StatelessWidget {
             child: Text(itemLabel(item), overflow: TextOverflow.ellipsis),
           ),
       ],
-      hint: _DropdownFace(
-        label: label,
-        value: placeholder,
-        icon: icon,
-        color: color,
+      hint: SizedBox(
+        height: 58,
+        child: _DropdownFace(
+          label: label,
+          value: placeholder,
+          icon: icon,
+          color: color,
+        ),
       ),
       onChanged: onChanged,
       validator: validator,
@@ -684,11 +706,11 @@ class _DropdownFace extends StatelessWidget {
     return Row(
       children: [
         CircleAvatar(
-          radius: 22,
+          radius: 20,
           backgroundColor: color.withValues(alpha: 0.18),
           child: Icon(icon, color: color),
         ),
-        const SizedBox(width: 12),
+        const SizedBox(width: 10),
         Expanded(
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -702,7 +724,7 @@ class _DropdownFace extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
                 style: AppTextStyles.body.copyWith(
                   color: AppColors.textPrimary.withValues(alpha: 0.78),
-                  fontSize: 15,
+                  fontSize: 14,
                 ),
               ),
             ],
@@ -727,6 +749,8 @@ class _CommentField extends StatelessWidget {
         controller: controller,
         style: AppTextStyles.body,
         decoration: InputDecoration(
+          filled: false,
+          fillColor: Colors.transparent,
           labelText: 'Comentario (opcional)',
           hintText: 'En que lo gastaste?',
           suffixIcon: Icon(
