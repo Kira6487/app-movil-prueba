@@ -27,10 +27,14 @@ class TransactionFormScreen extends StatefulWidget {
     super.key,
     required this.type,
     this.initialQuickAction,
+    this.initialAccount,
+    this.initialTransaction,
   });
 
   final String type;
   final QuickActionModel? initialQuickAction;
+  final AccountModel? initialAccount;
+  final FinancialTransactionModel? initialTransaction;
 
   @override
   State<TransactionFormScreen> createState() => _TransactionFormScreenState();
@@ -50,12 +54,27 @@ class _TransactionFormScreenState extends State<TransactionFormScreen> {
   bool _saving = false;
 
   bool get _isExpense => widget.type == 'expense';
+  bool get _isEditing => widget.initialTransaction != null;
 
   @override
   void initState() {
     super.initState();
     _dataFuture = _loadData();
-    _applyQuickAction(widget.initialQuickAction);
+    final initialTransaction = widget.initialTransaction;
+    if (initialTransaction == null) {
+      _selectedAccount = widget.initialAccount;
+      _applyQuickAction(widget.initialQuickAction);
+    } else {
+      _amountController.text = _formatNumber(initialTransaction.amount);
+      _currency = initialTransaction.currency;
+      if (initialTransaction.exchangeRate != null) {
+        _exchangeRateController.text =
+            _formatNumber(initialTransaction.exchangeRate!);
+      }
+      _selectedDate =
+          DateTime.tryParse(initialTransaction.date) ?? DateTime.now();
+      _commentController.text = initialTransaction.comment ?? '';
+    }
   }
 
   @override
@@ -80,6 +99,15 @@ class _TransactionFormScreenState extends State<TransactionFormScreen> {
       _selectedAccount = _findById(accounts, initial.accountId);
       _selectedCategory = _findById(categories, initial.categoryId);
     }
+    final initialAccount = widget.initialAccount;
+    if (initialAccount != null) {
+      _selectedAccount = _findById(accounts, initialAccount.id);
+    }
+    final initialTransaction = widget.initialTransaction;
+    if (initialTransaction != null) {
+      _selectedAccount = _findById(accounts, initialTransaction.accountId);
+      _selectedCategory = _findById(categories, initialTransaction.categoryId);
+    }
 
     return _TransactionFormData(
       accounts: accounts,
@@ -90,7 +118,9 @@ class _TransactionFormScreenState extends State<TransactionFormScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final title = _isExpense ? 'Registrar gasto' : 'Registrar ingreso';
+    final title = _isEditing
+        ? (_isExpense ? 'Editar gasto' : 'Editar ingreso')
+        : (_isExpense ? 'Registrar gasto' : 'Registrar ingreso');
     final color = _isExpense ? AppColors.red : AppColors.green;
 
     return AppScaffold(
@@ -131,7 +161,9 @@ class _TransactionFormScreenState extends State<TransactionFormScreen> {
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                if (_isExpense && data.quickActions.isNotEmpty) ...[
+                if (_isExpense &&
+                    !_isEditing &&
+                    data.quickActions.isNotEmpty) ...[
                   const SectionHeader(
                     title: 'Botones rápidos',
                     subtitle:
@@ -308,27 +340,35 @@ class _TransactionFormScreenState extends State<TransactionFormScreen> {
           ? _parseNumber(_exchangeRateController.text)
           : null;
       final now = AppDateUtils.nowIso();
-      await TransactionService().insertTransaction(
-        FinancialTransactionModel(
-          type: widget.type,
-          amount: amount,
-          currency: _currency,
-          exchangeRate: exchangeRate,
-          accountId: account.id!,
-          categoryId: category.id!,
-          date: AppDateUtils.dateOnlyIso(_selectedDate),
-          comment: _commentController.text.trim().isEmpty
-              ? null
-              : _commentController.text.trim(),
-          createdAt: now,
-        ),
+      final transaction = FinancialTransactionModel(
+        id: widget.initialTransaction?.id,
+        type: widget.type,
+        amount: amount,
+        currency: _currency,
+        exchangeRate: exchangeRate,
+        accountId: account.id!,
+        categoryId: category.id!,
+        date: AppDateUtils.dateOnlyIso(_selectedDate),
+        comment: _commentController.text.trim().isEmpty
+            ? null
+            : _commentController.text.trim(),
+        createdAt: widget.initialTransaction?.createdAt ?? now,
       );
+      if (_isEditing) {
+        await TransactionService().updateTransaction(transaction);
+      } else {
+        await TransactionService().insertTransaction(transaction);
+      }
       TransactionChangeNotifier.notifyChanged();
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(_isExpense ? 'Gasto registrado' : 'Ingreso registrado'),
+          content: Text(
+            _isEditing
+                ? 'Movimiento actualizado'
+                : (_isExpense ? 'Gasto registrado' : 'Ingreso registrado'),
+          ),
           backgroundColor: color,
         ),
       );

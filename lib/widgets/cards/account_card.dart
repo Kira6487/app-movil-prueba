@@ -13,6 +13,7 @@ class AccountCard extends StatelessWidget {
     required this.balance,
     required this.visibleInBudget,
     required this.color,
+    this.icon = Icons.account_balance_wallet_outlined,
     this.onTap,
   });
 
@@ -22,6 +23,7 @@ class AccountCard extends StatelessWidget {
   final String balance;
   final bool visibleInBudget;
   final Color color;
+  final IconData icon;
   final VoidCallback? onTap;
 
   @override
@@ -33,7 +35,7 @@ class AccountCard extends StatelessWidget {
           CircleAvatar(
             radius: 24,
             backgroundColor: color.withValues(alpha: 0.16),
-            child: Icon(Icons.account_balance_wallet_outlined, color: color),
+            child: Icon(icon, color: color),
           ),
           const SizedBox(width: 14),
           Expanded(
@@ -42,12 +44,13 @@ class AccountCard extends StatelessWidget {
               children: [
                 Text(name, style: AppTextStyles.cardTitle),
                 const SizedBox(height: 4),
-                Text('$type · $currency', style: AppTextStyles.muted),
+                Text('$type - $currency', style: AppTextStyles.muted),
                 const SizedBox(height: 8),
                 Chip(
                   visualDensity: VisualDensity.compact,
                   side: BorderSide(
-                      color: AppColors.border.withValues(alpha: 0.7)),
+                    color: AppColors.border.withValues(alpha: 0.7),
+                  ),
                   backgroundColor: AppColors.surfaceAlt,
                   avatar: Icon(
                     visibleInBudget

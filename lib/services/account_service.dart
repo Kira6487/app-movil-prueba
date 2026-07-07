@@ -46,6 +46,7 @@ class AccountService {
   }
 
   Future<int> insertAccount(AccountModel account) async {
+    _validateAccount(account);
     final db = await _database.database;
     return db.insert('accounts', account.toMap()..remove('id'));
   }
@@ -56,6 +57,7 @@ class AccountService {
       throw ArgumentError('Account id is required for update.');
     }
 
+    _validateAccount(account);
     final db = await _database.database;
     return db.update('accounts', account.toMap()..remove('id'),
         where: 'id = ?', whereArgs: [id]);
@@ -69,5 +71,47 @@ class AccountService {
       where: 'id = ?',
       whereArgs: [accountId],
     );
+  }
+
+  Future<int> countAccountMovements(int accountId) async {
+    final db = await _database.database;
+    final transactionRows = await db.rawQuery(
+      'SELECT COUNT(*) AS total FROM financial_transactions WHERE account_id = ?',
+      [accountId],
+    );
+    final transferRows = await db.rawQuery(
+      '''
+SELECT COUNT(*) AS total
+FROM transfers
+WHERE from_account_id = ? OR to_account_id = ?
+''',
+      [accountId, accountId],
+    );
+    final transactions =
+        ((transactionRows.first['total'] as num?) ?? 0).toInt();
+    final transfers = ((transferRows.first['total'] as num?) ?? 0).toInt();
+    return transactions + transfers;
+  }
+
+  Future<int> deleteAccount(int id) async {
+    final movements = await countAccountMovements(id);
+    if (movements > 0) {
+      throw StateError('No se puede eliminar una cuenta con movimientos.');
+    }
+
+    final db = await _database.database;
+    return db.delete('accounts', where: 'id = ?', whereArgs: [id]);
+  }
+
+  void _validateAccount(AccountModel account) {
+    if (account.name.trim().isEmpty) {
+      throw ArgumentError('Account name is required.');
+    }
+    if (account.accountType.trim().isEmpty) {
+      throw ArgumentError('Account type is required.');
+    }
+    if (account.currency != 'SOL' && account.currency != 'USD') {
+      throw ArgumentError('Currency must be SOL or USD.');
+    }
   }
 }

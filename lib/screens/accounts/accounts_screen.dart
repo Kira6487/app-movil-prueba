@@ -4,14 +4,17 @@ import '../../models/account_model.dart';
 import '../../providers/transaction_change_notifier.dart';
 import '../../services/account_service.dart';
 import '../../theme/app_colors.dart';
-import '../../utils/currency_formatter.dart';
 import '../../widgets/buttons/app_primary_button.dart';
 import '../../widgets/buttons/app_secondary_button.dart';
 import '../../widgets/cards/account_card.dart';
+import '../../widgets/common/app_card.dart';
 import '../../widgets/common/app_scaffold.dart';
 import '../../widgets/common/empty_state.dart';
 import '../../widgets/common/section_header.dart';
 import '../placeholders/action_placeholder_screen.dart';
+import '../transactions/transactions_screen.dart';
+import 'account_detail_screen.dart';
+import 'account_form_screen.dart';
 
 class AccountsScreen extends StatelessWidget {
   const AccountsScreen({super.key});
@@ -26,6 +29,7 @@ class AccountsScreen extends StatelessWidget {
           subtitle: 'Saldos locales cargados desde SQLite',
         ),
         _AccountActions(),
+        _FutureIntegrationsCard(),
         _AccountsList(),
       ],
     );
@@ -58,8 +62,8 @@ class _AccountsList extends StatelessWidget {
             final accounts = snapshot.data ?? const [];
             if (accounts.isEmpty) {
               return const EmptyState(
-                title: 'Todavía no hay cuentas registradas',
-                message: 'La pantalla está lista para mostrar cuentas locales.',
+                title: 'Todavia no hay cuentas registradas',
+                message: 'Crea una cuenta local para comenzar.',
                 icon: Icons.account_balance_wallet_outlined,
               );
             }
@@ -71,11 +75,18 @@ class _AccountsList extends StatelessWidget {
                     padding: const EdgeInsets.only(bottom: 12),
                     child: AccountCard(
                       name: account.name,
-                      type: _accountTypeLabel(account.accountType),
+                      type: accountTypeLabel(account.accountType),
                       currency: account.currency,
-                      balance: _formatBalance(account),
+                      balance: formatAccountBalance(account),
                       visibleInBudget: !account.isHiddenFromBudget,
-                      color: _colorFromHex(account.color),
+                      color: colorFromHex(account.color),
+                      icon: iconForAccount(account.icon),
+                      onTap: () => Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) =>
+                              AccountDetailScreen(accountId: account.id!),
+                        ),
+                      ),
                     ),
                   ),
               ],
@@ -92,34 +103,45 @@ class _AccountActions extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
+    return Column(
       children: [
-        Expanded(
-          child: AppPrimaryButton(
-            label: 'Nueva cuenta',
-            icon: Icons.add,
-            onPressed: () => _openPlaceholder(
-              context,
-              title: 'Nueva cuenta',
-              description:
-                  'El formulario real de cuentas se implementará en una fase posterior.',
-              icon: Icons.account_balance_wallet_outlined,
-              color: AppColors.blue,
+        Row(
+          children: [
+            Expanded(
+              child: AppPrimaryButton(
+                label: 'Nueva cuenta',
+                icon: Icons.add,
+                onPressed: () => Navigator.of(context).push(
+                  MaterialPageRoute<bool>(
+                    builder: (_) => const AccountFormScreen(),
+                  ),
+                ),
+              ),
             ),
-          ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: AppSecondaryButton(
+                label: 'Transferir',
+                icon: Icons.swap_horiz,
+                onPressed: () => _openPlaceholder(
+                  context,
+                  title: 'Transferencia entre cuentas',
+                  description:
+                      'La transferencia funcional se implementara mas adelante.',
+                  icon: Icons.swap_horiz,
+                  color: AppColors.blue,
+                ),
+              ),
+            ),
+          ],
         ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: AppSecondaryButton(
-            label: 'Transferir',
-            icon: Icons.swap_horiz,
-            onPressed: () => _openPlaceholder(
-              context,
-              title: 'Transferencia entre cuentas',
-              description:
-                  'La transferencia funcional se implementará más adelante.',
-              icon: Icons.swap_horiz,
-              color: AppColors.blue,
+        const SizedBox(height: 12),
+        AppSecondaryButton(
+          label: 'Todas las transacciones',
+          icon: Icons.receipt_long_outlined,
+          onPressed: () => Navigator.of(context).push(
+            MaterialPageRoute<void>(
+              builder: (_) => const TransactionsScreen(),
             ),
           ),
         ),
@@ -147,29 +169,25 @@ class _AccountActions extends StatelessWidget {
   }
 }
 
-String _formatBalance(AccountModel account) {
-  if (account.currency == 'USD') {
-    return formatUsd(account.currentBalance);
+class _FutureIntegrationsCard extends StatelessWidget {
+  const _FutureIntegrationsCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return const AppCard(
+      backgroundColor: AppColors.surfaceAlt,
+      child: Row(
+        children: [
+          Icon(Icons.link_outlined, color: AppColors.textMuted),
+          SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              'Integraciones futuras: banca movil y Google Wallet. '
+              'Proximamente, no disponible en demo.',
+            ),
+          ),
+        ],
+      ),
+    );
   }
-  return formatSol(account.currentBalance);
-}
-
-String _accountTypeLabel(String type) {
-  return switch (type) {
-    'ahorros' => 'Ahorros',
-    'corriente' => 'Corriente',
-    'sueldo' => 'Sueldo',
-    'plazo_fijo' => 'Plazo fijo',
-    'efectivo' => 'Efectivo',
-    'billetera' => 'Billetera digital',
-    _ => type,
-  };
-}
-
-Color _colorFromHex(String? value) {
-  if (value == null || value.length != 7 || !value.startsWith('#')) {
-    return AppColors.blue;
-  }
-
-  return Color(int.parse(value.substring(1), radix: 16) + 0xFF000000);
 }
