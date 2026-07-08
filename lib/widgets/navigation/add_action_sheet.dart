@@ -71,13 +71,13 @@ class _AddActionSheetState extends State<AddActionSheet> {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: const Color(0xFF121B2C),
+      color: AppColors.background,
       borderRadius: const BorderRadius.vertical(
         top: Radius.circular(32),
       ),
       clipBehavior: Clip.antiAlias,
       elevation: 24,
-      shadowColor: Colors.black.withValues(alpha: 0.55),
+      shadowColor: AppColors.blue.withValues(alpha: 0.20),
       child: Padding(
         padding: EdgeInsets.only(
           left: 20,
@@ -101,7 +101,7 @@ class _AddActionSheetState extends State<AddActionSheet> {
                       width: 56,
                       height: 5,
                       decoration: BoxDecoration(
-                        color: AppColors.textMuted.withValues(alpha: 0.45),
+                        color: AppColors.activeBorder.withValues(alpha: 0.65),
                         borderRadius: BorderRadius.circular(AppRadii.pill),
                       ),
                     ),
@@ -155,7 +155,7 @@ class _AddActionSheetState extends State<AddActionSheet> {
                 label: 'Cuenta',
                 placeholder: 'Seleccionar cuenta',
                 icon: Icons.account_balance_outlined,
-                color: AppColors.green,
+                color: AppColors.blue,
                 items: data.accounts,
                 itemLabel: (account) => account.name,
                 value: _selectedAccount,
@@ -173,7 +173,7 @@ class _AddActionSheetState extends State<AddActionSheet> {
                 label: 'Categoria',
                 placeholder: 'Seleccionar categoria',
                 icon: Icons.local_offer_outlined,
-                color: AppColors.blue,
+                color: AppColors.purple,
                 items: data.categories,
                 itemLabel: (category) => category.name,
                 value: _selectedCategory,
@@ -467,13 +467,13 @@ class _SheetHeader extends StatelessWidget {
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             gradient: const LinearGradient(
-              colors: [Color(0xFF22C55E), Color(0xFF15803D)],
+              colors: [AppColors.cyan, AppColors.blueOtter],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
             boxShadow: [
               BoxShadow(
-                color: AppColors.green.withValues(alpha: 0.26),
+                color: AppColors.cyan.withValues(alpha: 0.30),
                 blurRadius: 18,
                 offset: const Offset(0, 8),
               ),
@@ -580,7 +580,7 @@ class _AmountField extends StatelessWidget {
                 width: 50,
                 height: 50,
                 decoration: BoxDecoration(
-                  color: AppColors.surfaceAlt.withValues(alpha: 0.88),
+                  color: AppColors.surfaceAlt,
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(
                     color: AppColors.border.withValues(alpha: 0.75),
@@ -625,112 +625,108 @@ class _ExpenseDropdownCard<T> extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return DropdownButtonFormField<T>(
+    return FormField<T>(
+      key: ValueKey<T?>(value),
       initialValue: value,
-      isExpanded: true,
-      icon: const Icon(Icons.keyboard_arrow_down, color: AppColors.textPrimary),
-      decoration: InputDecoration(
-        filled: true,
-        fillColor: AppColors.surfaceAlt.withValues(alpha: 0.32),
-        isDense: false,
-        constraints: const BoxConstraints(minHeight: 78),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(18),
-          borderSide: BorderSide(
-            color: AppColors.border.withValues(alpha: 0.75),
-          ),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(18),
-          borderSide: BorderSide(
-            color: AppColors.border.withValues(alpha: 0.75),
-          ),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(18),
-          borderSide: BorderSide(color: color.withValues(alpha: 0.85)),
-        ),
-      ),
-      selectedItemBuilder: (context) {
-        return [
-          for (final item in items)
-            SizedBox(
-              height: 58,
-              child: _DropdownFace(
-                label: label,
-                value: itemLabel(item),
-                icon: icon,
-                color: color,
-              ),
-            ),
-        ];
-      },
-      items: [
-        for (final item in items)
-          DropdownMenuItem<T>(
-            value: item,
-            child: Text(itemLabel(item), overflow: TextOverflow.ellipsis),
-          ),
-      ],
-      hint: SizedBox(
-        height: 58,
-        child: _DropdownFace(
-          label: label,
-          value: placeholder,
-          icon: icon,
-          color: color,
-        ),
-      ),
-      onChanged: onChanged,
       validator: validator,
-    );
-  }
-}
+      builder: (field) {
+        final selected = field.value ?? value;
+        final text = selected == null ? placeholder : itemLabel(selected);
 
-class _DropdownFace extends StatelessWidget {
-  const _DropdownFace({
-    required this.label,
-    required this.value,
-    required this.icon,
-    required this.color,
-  });
-
-  final String label;
-  final String value;
-  final IconData icon;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        CircleAvatar(
-          radius: 20,
-          backgroundColor: color.withValues(alpha: 0.18),
-          child: Icon(icon, color: color),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(label, style: AppTextStyles.muted),
-              const SizedBox(height: 2),
-              Text(
-                value,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: AppTextStyles.body.copyWith(
-                  color: AppColors.textPrimary.withValues(alpha: 0.78),
-                  fontSize: 14,
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            PopupMenuButton<T>(
+              tooltip: label,
+              color: AppColors.surface,
+              elevation: 8,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(18),
+              ),
+              onSelected: (selectedValue) {
+                field.didChange(selectedValue);
+                onChanged(selectedValue);
+              },
+              itemBuilder: (context) => [
+                for (final item in items)
+                  PopupMenuItem<T>(
+                    value: item,
+                    child: Text(
+                      itemLabel(item),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+              ],
+              child: Container(
+                constraints: const BoxConstraints(minHeight: 86),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 12,
+                ),
+                decoration: BoxDecoration(
+                  color: AppColors.surface,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: field.hasError
+                        ? AppColors.red
+                        : AppColors.border.withValues(alpha: 0.85),
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.blue.withValues(alpha: 0.06),
+                      blurRadius: 12,
+                      offset: const Offset(0, 6),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    CircleAvatar(
+                      radius: 22,
+                      backgroundColor: color.withValues(alpha: 0.14),
+                      child: Icon(icon, color: color),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(label, style: AppTextStyles.muted),
+                          const SizedBox(height: 4),
+                          Text(
+                            text,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: AppTextStyles.body.copyWith(
+                              color: AppColors.textPrimary,
+                              fontSize: 15,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    const Icon(
+                      Icons.keyboard_arrow_down,
+                      color: AppColors.textSecondary,
+                    ),
+                  ],
                 ),
               ),
+            ),
+            if (field.hasError) ...[
+              const SizedBox(height: 6),
+              Text(
+                field.errorText!,
+                style: AppTextStyles.label.copyWith(color: AppColors.red),
+              ),
             ],
-          ),
-        ),
-      ],
+          ],
+        );
+      },
     );
   }
 }
@@ -755,7 +751,7 @@ class _CommentField extends StatelessWidget {
           hintText: 'En que lo gastaste?',
           suffixIcon: Icon(
             Icons.chat_bubble_outline,
-            color: AppColors.textPrimary.withValues(alpha: 0.82),
+            color: AppColors.blue.withValues(alpha: 0.82),
           ),
           border: InputBorder.none,
           enabledBorder: InputBorder.none,
@@ -785,13 +781,13 @@ class _SaveExpenseButton extends StatelessWidget {
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(18),
           gradient: const LinearGradient(
-            colors: [Color(0xFF22C55E), Color(0xFF15803D)],
+            colors: [AppColors.cyan, AppColors.blueOtter],
             begin: Alignment.centerLeft,
             end: Alignment.centerRight,
           ),
           boxShadow: [
             BoxShadow(
-              color: AppColors.green.withValues(alpha: 0.22),
+              color: AppColors.blue.withValues(alpha: 0.18),
               blurRadius: 18,
               offset: const Offset(0, 10),
             ),
@@ -840,7 +836,7 @@ class _QuickExpenseChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: color.withValues(alpha: 0.13),
+      color: AppColors.surface,
       borderRadius: BorderRadius.circular(20),
       child: InkWell(
         borderRadius: BorderRadius.circular(20),
@@ -850,14 +846,21 @@ class _QuickExpenseChip extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: color.withValues(alpha: 0.72)),
+            border: Border.all(color: color.withValues(alpha: 0.45)),
+            boxShadow: [
+              BoxShadow(
+                color: color.withValues(alpha: 0.08),
+                blurRadius: 12,
+                offset: const Offset(0, 6),
+              ),
+            ],
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
               CircleAvatar(
                 radius: 22,
-                backgroundColor: color.withValues(alpha: 0.28),
+                backgroundColor: color.withValues(alpha: 0.14),
                 child: Icon(icon, color: color),
               ),
               const SizedBox(width: 10),
@@ -906,7 +909,7 @@ class _SecondaryActionTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: AppColors.surfaceAlt.withValues(alpha: 0.35),
+      color: AppColors.surface,
       borderRadius: BorderRadius.circular(18),
       child: InkWell(
         borderRadius: BorderRadius.circular(18),
@@ -916,8 +919,15 @@ class _SecondaryActionTile extends StatelessWidget {
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(18),
             border: Border.all(
-              color: AppColors.border.withValues(alpha: 0.58),
+              color: AppColors.border.withValues(alpha: 0.80),
             ),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.blue.withValues(alpha: 0.06),
+                blurRadius: 12,
+                offset: const Offset(0, 6),
+              ),
+            ],
           ),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -947,7 +957,7 @@ class _SecondaryActionTile extends StatelessWidget {
 
 BoxDecoration _panelDecoration() {
   return BoxDecoration(
-    color: AppColors.surfaceAlt.withValues(alpha: 0.28),
+    color: AppColors.surface,
     borderRadius: BorderRadius.circular(20),
     border: Border.all(color: AppColors.border.withValues(alpha: 0.68)),
   );

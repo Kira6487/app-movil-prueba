@@ -23,11 +23,13 @@ class StatusCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AppCard(
+      backgroundColor: AppColors.surface,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           CircleAvatar(
-            backgroundColor: color.withValues(alpha: 0.16),
+            radius: 26,
+            backgroundColor: color.withValues(alpha: 0.14),
             child: Icon(icon, color: color),
           ),
           const SizedBox(height: 14),
@@ -35,7 +37,10 @@ class StatusCard extends StatelessWidget {
           const SizedBox(height: 6),
           Text(status, style: AppTextStyles.title.copyWith(color: color)),
           const SizedBox(height: 6),
-          Text(description, style: AppTextStyles.muted),
+          Text(
+            description,
+            style: AppTextStyles.muted.copyWith(fontSize: 14),
+          ),
         ],
       ),
     );
@@ -89,7 +94,8 @@ class SummaryCard extends StatelessWidget {
           const SizedBox(height: 12),
           for (var index = 0; index < items.length; index++) ...[
             _SummaryRow(item: items[index]),
-            if (index == 3 && items.length > 4) const Divider(height: 22),
+            if (index == 3 && items.length > 4)
+              const Divider(height: 22, color: AppColors.border),
           ],
         ],
       ),
@@ -109,11 +115,15 @@ class _SummaryRow extends StatelessWidget {
       child: Row(
         children: [
           Expanded(child: Text(item.label, style: AppTextStyles.muted)),
-          Text(
-            item.value,
-            style: AppTextStyles.body.copyWith(
-              color: item.valueColor ?? AppColors.textPrimary,
-              fontWeight: FontWeight.w900,
+          Flexible(
+            child: Text(
+              item.value,
+              textAlign: TextAlign.end,
+              overflow: TextOverflow.ellipsis,
+              style: AppTextStyles.body.copyWith(
+                color: item.valueColor ?? AppColors.textPrimary,
+                fontWeight: FontWeight.w900,
+              ),
             ),
           ),
         ],

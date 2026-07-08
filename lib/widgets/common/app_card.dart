@@ -36,8 +36,8 @@ class AppCard extends StatelessWidget {
     return Material(
       color: backgroundColor,
       shape: shape,
-      elevation: 0,
-      shadowColor: Colors.black.withValues(alpha: 0.12),
+      elevation: 3,
+      shadowColor: AppColors.blue.withValues(alpha: 0.10),
       clipBehavior: Clip.antiAlias,
       child: onTap == null
           ? content

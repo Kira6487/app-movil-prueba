@@ -1,7 +1,7 @@
 name: finanzas_personales
 description: Aplicacion movil demo offline para control financiero personal.
 publish_to: "none"
-version: 0.1.0+1
+version: 0.1.1+2
 
 environment:
   sdk: ">=3.4.0 <4.0.0"
@@ -16,7 +16,17 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^4.0.0
+  flutter_launcher_icons: ^0.14.4
   sqflite_common_ffi: ^2.3.3
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/icon/
+
+flutter_launcher_icons:
+  android: true
+  ios: false
+  image_path: "assets/icon/Logo_app.png"
+  adaptive_icon_background: "#F6FBFF"
+  adaptive_icon_foreground: "assets/icon/Logo_app.png"

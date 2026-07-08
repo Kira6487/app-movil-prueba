@@ -7,15 +7,15 @@ class AppTextStyles {
 
   static const display = TextStyle(
     color: AppColors.textPrimary,
-    fontSize: 28,
+    fontSize: 30,
     fontWeight: FontWeight.w900,
     height: 1.1,
   );
 
   static const title = TextStyle(
     color: AppColors.textPrimary,
-    fontSize: 20,
-    fontWeight: FontWeight.w800,
+    fontSize: 24,
+    fontWeight: FontWeight.w900,
   );
 
   static const sectionTitle = TextStyle(
@@ -33,13 +33,13 @@ class AppTextStyles {
   static const body = TextStyle(
     color: AppColors.textPrimary,
     fontSize: 14,
-    fontWeight: FontWeight.w500,
+    fontWeight: FontWeight.w600,
   );
 
   static const muted = TextStyle(
     color: AppColors.textMuted,
     fontSize: 13,
-    fontWeight: FontWeight.w500,
+    fontWeight: FontWeight.w600,
   );
 
   static const label = TextStyle(

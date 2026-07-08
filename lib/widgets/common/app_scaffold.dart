@@ -22,31 +22,61 @@ class AppScaffold extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: SafeArea(
-        child: CustomScrollView(
-          slivers: [
-            SliverAppBar(
-              pinned: true,
-              titleSpacing: AppSpacing.lg,
-              backgroundColor: AppColors.background,
-              surfaceTintColor: Colors.transparent,
-              title: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(title, style: AppTextStyles.title),
-                  if (subtitle != null)
-                    Text(subtitle!, style: AppTextStyles.muted),
-                ],
+      body: DecoratedBox(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            colors: [AppColors.backgroundAlt, AppColors.background],
+            begin: Alignment.topCenter,
+            end: Alignment.center,
+          ),
+        ),
+        child: Stack(
+          children: [
+            Positioned(
+              top: 42,
+              left: -80,
+              right: -80,
+              child: Container(
+                height: 150,
+                decoration: BoxDecoration(
+                  color: AppColors.cyanSoft.withValues(alpha: 0.22),
+                  borderRadius: const BorderRadius.only(
+                    bottomLeft: Radius.circular(140),
+                    bottomRight: Radius.circular(220),
+                  ),
+                ),
               ),
-              actions: actions,
             ),
-            SliverPadding(
-              padding: AppSpacing.screen,
-              sliver: SliverList.separated(
-                itemCount: children.length,
-                separatorBuilder: (_, __) =>
-                    const SizedBox(height: AppSpacing.lg),
-                itemBuilder: (context, index) => children[index],
+            SafeArea(
+              child: CustomScrollView(
+                slivers: [
+                  SliverAppBar(
+                    pinned: true,
+                    titleSpacing: AppSpacing.lg,
+                    backgroundColor: Colors.transparent,
+                    foregroundColor: AppColors.textPrimary,
+                    elevation: 0,
+                    surfaceTintColor: Colors.transparent,
+                    title: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(title, style: AppTextStyles.display),
+                        if (subtitle != null)
+                          Text(subtitle!, style: AppTextStyles.muted),
+                      ],
+                    ),
+                    actions: actions,
+                  ),
+                  SliverPadding(
+                    padding: AppSpacing.screen,
+                    sliver: SliverList.separated(
+                      itemCount: children.length,
+                      separatorBuilder: (_, __) =>
+                          const SizedBox(height: AppSpacing.lg),
+                      itemBuilder: (context, index) => children[index],
+                    ),
+                  ),
+                ],
               ),
             ),
           ],

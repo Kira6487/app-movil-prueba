@@ -9,9 +9,9 @@ class FinanzasPersonalesApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Finanzas Personales',
+      title: 'Duna',
       debugShowCheckedModeBanner: false,
-      theme: AppTheme.darkTheme,
+      theme: AppTheme.lightTheme,
       home: const MainShell(),
     );
   }

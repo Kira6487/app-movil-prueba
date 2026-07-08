@@ -30,7 +30,7 @@ class _MainShellState extends State<MainShell> {
       useSafeArea: true,
       isScrollControlled: true,
       showDragHandle: false,
-      barrierColor: Colors.black.withValues(alpha: 0.72),
+      barrierColor: AppColors.textPrimary.withValues(alpha: 0.28),
       backgroundColor: AppColors.surface,
       builder: (context) => const AddActionSheet(),
     );
@@ -57,35 +57,50 @@ class _MainShellState extends State<MainShell> {
         index: _selectedIndex,
         children: _pages,
       ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: navigationIndex,
-        onDestinationSelected: _onItemTapped,
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.home_outlined),
-            selectedIcon: Icon(Icons.home),
-            label: 'Inicio',
+      bottomNavigationBar: DecoratedBox(
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.blue.withValues(alpha: 0.12),
+              blurRadius: 22,
+              offset: const Offset(0, -8),
+            ),
+          ],
+        ),
+        child: SafeArea(
+          top: false,
+          child: NavigationBar(
+            selectedIndex: navigationIndex,
+            onDestinationSelected: _onItemTapped,
+            destinations: const [
+              NavigationDestination(
+                icon: Icon(Icons.home_outlined),
+                selectedIcon: Icon(Icons.home),
+                label: 'Inicio',
+              ),
+              NavigationDestination(
+                icon: Icon(Icons.calendar_month_outlined),
+                selectedIcon: Icon(Icons.calendar_month),
+                label: 'Calendario',
+              ),
+              NavigationDestination(
+                icon: _AddButtonIcon(),
+                label: '',
+              ),
+              NavigationDestination(
+                icon: Icon(Icons.account_balance_wallet_outlined),
+                selectedIcon: Icon(Icons.account_balance_wallet),
+                label: 'Cuentas',
+              ),
+              NavigationDestination(
+                icon: Icon(Icons.bar_chart_outlined),
+                selectedIcon: Icon(Icons.bar_chart),
+                label: 'Reportes',
+              ),
+            ],
           ),
-          NavigationDestination(
-            icon: Icon(Icons.calendar_month_outlined),
-            selectedIcon: Icon(Icons.calendar_month),
-            label: 'Calendario',
-          ),
-          NavigationDestination(
-            icon: _AddButtonIcon(),
-            label: '',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.account_balance_wallet_outlined),
-            selectedIcon: Icon(Icons.account_balance_wallet),
-            label: 'Cuentas',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.bar_chart_outlined),
-            selectedIcon: Icon(Icons.bar_chart),
-            label: 'Reportes',
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -102,7 +117,7 @@ class _AddButtonIcon extends StatelessWidget {
       decoration: const BoxDecoration(
         shape: BoxShape.circle,
         gradient: LinearGradient(
-          colors: [AppColors.blue, AppColors.green],
+          colors: [AppColors.cyan, AppColors.blueOtter],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
