@@ -25,6 +25,43 @@ class CategoryService {
     return db.insert('categories', category.toMap()..remove('id'));
   }
 
+  Future<CategoryModel> getOrCreateCategory({
+    required String name,
+    required String type,
+    String? icon,
+    String? color,
+  }) async {
+    final db = await _database.database;
+    final rows = await db.query(
+      'categories',
+      where: 'name = ? AND type = ?',
+      whereArgs: [name, type],
+      limit: 1,
+    );
+    if (rows.isNotEmpty) return CategoryModel.fromMap(rows.first);
+
+    final now = DateTime.now().toIso8601String();
+    final id = await db.insert(
+      'categories',
+      CategoryModel(
+        name: name,
+        type: type,
+        icon: icon,
+        color: color,
+        createdAt: now,
+      ).toMap()
+        ..remove('id'),
+    );
+    return CategoryModel(
+      id: id,
+      name: name,
+      type: type,
+      icon: icon,
+      color: color,
+      createdAt: now,
+    );
+  }
+
   Future<int> updateCategory(CategoryModel category) async {
     final id = category.id;
     if (id == null) {

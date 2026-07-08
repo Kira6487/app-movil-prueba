@@ -34,7 +34,7 @@ class ReportsScreen extends StatelessWidget {
       children: [
         const SectionHeader(
           title: 'Filtros',
-          subtitle: 'Controles visuales demo para futuras consultas',
+          subtitle: 'Filtros visuales para explorar tus reportes',
         ),
         const _ReportFilters(),
         const SectionHeader(

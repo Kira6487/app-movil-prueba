@@ -3,8 +3,6 @@ import 'package:flutter/material.dart';
 import '../../models/account_model.dart';
 import '../../providers/transaction_change_notifier.dart';
 import '../../services/account_service.dart';
-import '../../theme/app_colors.dart';
-import '../../theme/app_text_styles.dart';
 import '../../utils/date_utils.dart';
 import '../../widgets/buttons/app_primary_button.dart';
 import '../../widgets/buttons/app_secondary_button.dart';
@@ -13,6 +11,9 @@ import '../../widgets/common/app_scaffold.dart';
 import '../../widgets/common/section_header.dart';
 import '../../widgets/inputs/app_dropdown_field.dart';
 import '../../widgets/inputs/app_text_input.dart';
+import '../../widgets/inputs/color_palette_field.dart';
+import '../../widgets/inputs/icon_palette_field.dart';
+import 'account_balance_adjustment_screen.dart';
 
 class AccountFormScreen extends StatefulWidget {
   const AccountFormScreen({super.key, this.initial});
@@ -30,8 +31,8 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
 
   String _accountType = _accountTypes.first.value;
   String _currency = 'SOL';
-  String _color = _accountColors.first.value;
-  String _icon = _accountIcons.first.value;
+  String _color = appColorChoices.first.hex;
+  String _icon = 'wallet';
   bool _hiddenFromBudget = false;
   bool _saving = false;
 
@@ -43,12 +44,13 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
     final initial = widget.initial;
     if (initial != null) {
       _nameController.text = initial.name;
-      _initialBalanceController.text = _formatNumber(initial.initialBalance);
       _accountType = initial.accountType;
       _currency = initial.currency;
-      _color = initial.color ?? _accountColors.first.value;
-      _icon = initial.icon ?? _accountIcons.first.value;
+      _color = initial.color ?? _color;
+      _icon = initial.icon ?? _icon;
       _hiddenFromBudget = initial.isHiddenFromBudget;
+    } else {
+      _initialBalanceController.text = '0';
     }
   }
 
@@ -61,12 +63,15 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final account = widget.initial;
     return AppScaffold(
       title: _isEditing ? 'Editar cuenta' : 'Nueva cuenta',
       children: [
         SectionHeader(
           title: _isEditing ? 'Datos de la cuenta' : 'Crear cuenta',
-          subtitle: 'Administra cuentas locales sin conexion bancaria.',
+          subtitle: _isEditing
+              ? 'Administra la informacion de esta cuenta.'
+              : 'Personaliza tus cuentas y organiza tus movimientos.',
         ),
         AppCard(
           child: Form(
@@ -80,13 +85,6 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
                   validator: (value) => value == null || value.trim().isEmpty
                       ? 'Ingresa un nombre'
                       : null,
-                ),
-                const SizedBox(height: 14),
-                const AppTextInput(
-                  label: 'Banco',
-                  hintText: 'Disponible cuando exista campo en SQLite',
-                  enabled: false,
-                  prefixIcon: Icons.account_balance_outlined,
                 ),
                 const SizedBox(height: 14),
                 AppDropdownField<_AccountOption>(
@@ -107,51 +105,69 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
                   itemLabel: (currency) => currency,
                   value: _currency,
                   prefixIcon: Icons.currency_exchange,
-                  onChanged: (value) {
-                    if (value == null) return;
-                    setState(() => _currency = value);
-                  },
+                  onChanged: account == null
+                      ? (value) {
+                          if (value == null) return;
+                          setState(() => _currency = value);
+                        }
+                      : null,
                 ),
                 const SizedBox(height: 14),
-                AppTextInput(
-                  label: 'Saldo inicial',
-                  hintText: '0.00',
-                  controller: _initialBalanceController,
-                  keyboardType: const TextInputType.numberWithOptions(
-                    decimal: true,
+                if (_isEditing && account != null)
+                  AppTextInput(
+                    label: 'Saldo actual',
+                    controller: TextEditingController(
+                      text: _formatAccountBalance(account),
+                    ),
+                    enabled: false,
+                    prefixIcon: Icons.payments_outlined,
+                  )
+                else
+                  AppTextInput(
+                    label: 'Saldo inicial',
+                    hintText: '0.00',
+                    controller: _initialBalanceController,
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
+                    prefixIcon: Icons.payments_outlined,
+                    validator: _validateBalance,
                   ),
-                  prefixIcon: Icons.payments_outlined,
-                  validator: _validateBalance,
-                ),
+                if (_isEditing && account != null) ...[
+                  const SizedBox(height: 14),
+                  AppSecondaryButton(
+                    label: 'Ajuste de saldo',
+                    icon: Icons.tune,
+                    onPressed: () async {
+                      await Navigator.of(context).push(
+                        MaterialPageRoute<bool>(
+                          builder: (_) =>
+                              AccountBalanceAdjustmentScreen(account: account),
+                        ),
+                      );
+                      TransactionChangeNotifier.notifyChanged();
+                    },
+                  ),
+                ],
                 const SizedBox(height: 14),
-                AppDropdownField<_AccountOption>(
+                IconPaletteField(
                   label: 'Icono',
-                  items: _accountIcons,
-                  itemLabel: (item) => item.label,
-                  value: _findOption(_accountIcons, _icon),
-                  prefixIcon: Icons.insert_emoticon_outlined,
-                  onChanged: (value) {
-                    if (value == null) return;
-                    setState(() => _icon = value.value);
-                  },
+                  value: _icon,
+                  color: colorFromHex(_color),
+                  onChanged: (value) => setState(() => _icon = value),
                 ),
                 const SizedBox(height: 14),
-                AppDropdownField<_AccountOption>(
+                ColorPaletteField(
                   label: 'Color',
-                  items: _accountColors,
-                  itemLabel: (item) => item.label,
-                  value: _findOption(_accountColors, _color),
-                  prefixIcon: Icons.palette_outlined,
-                  onChanged: (value) {
-                    if (value == null) return;
-                    setState(() => _color = value.value);
-                  },
+                  value: _color,
+                  onChanged: (value) => setState(() => _color = value),
                 ),
                 const SizedBox(height: 10),
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,
                   title: const Text('Ocultar del presupuesto'),
-                  subtitle: const Text('Mantiene la cuenta fuera de calculos.'),
+                  subtitle:
+                      const Text('Mantiene esta cuenta fuera de calculos.'),
                   value: _hiddenFromBudget,
                   onChanged: (value) {
                     setState(() => _hiddenFromBudget = value);
@@ -170,7 +186,9 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
                     const SizedBox(width: 12),
                     Expanded(
                       child: AppPrimaryButton(
-                        label: _saving ? 'Guardando...' : 'Guardar',
+                        label: _saving
+                            ? 'Guardando...'
+                            : (_isEditing ? 'Guardar cambios' : 'Guardar'),
                         icon: Icons.save_outlined,
                         onPressed: _saving ? null : _save,
                       ),
@@ -179,22 +197,6 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
                 ),
               ],
             ),
-          ),
-        ),
-        const AppCard(
-          backgroundColor: AppColors.surfaceAlt,
-          child: Row(
-            children: [
-              Icon(Icons.info_outline, color: AppColors.textMuted),
-              SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  'Integraciones futuras: banca movil y Google Wallet. '
-                  'No disponible en demo.',
-                  style: AppTextStyles.muted,
-                ),
-              ),
-            ],
           ),
         ),
       ],
@@ -206,7 +208,9 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
     setState(() => _saving = true);
     try {
       final initial = widget.initial;
-      final initialBalance = _parseNumber(_initialBalanceController.text) ?? 0;
+      final initialBalance = _isEditing
+          ? initial!.initialBalance
+          : (_parseNumber(_initialBalanceController.text) ?? 0);
       final account = AccountModel(
         id: initial?.id,
         name: _nameController.text.trim(),
@@ -247,9 +251,9 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
     return double.tryParse(value.trim().replaceAll(',', '.'));
   }
 
-  String _formatNumber(double value) {
-    if (value == value.roundToDouble()) return value.toStringAsFixed(0);
-    return value.toStringAsFixed(2);
+  String _formatAccountBalance(AccountModel account) {
+    final symbol = account.currency == 'USD' ? r'$' : 'S/';
+    return '$symbol ${account.currentBalance.toStringAsFixed(2)}';
   }
 
   _AccountOption _findOption(List<_AccountOption> options, String value) {
@@ -273,21 +277,5 @@ const _accountTypes = [
   _AccountOption('sueldo', 'Sueldo'),
   _AccountOption('plazo_fijo', 'Plazo fijo'),
   _AccountOption('efectivo', 'Efectivo'),
-  _AccountOption('billetera', 'Billetera digital'),
-];
-
-const _accountIcons = [
-  _AccountOption('wallet', 'Billetera'),
-  _AccountOption('bank', 'Banco'),
-  _AccountOption('cash', 'Efectivo'),
-  _AccountOption('card', 'Tarjeta'),
-  _AccountOption('savings', 'Ahorro'),
-];
-
-const _accountColors = [
-  _AccountOption('#2563EB', 'Azul'),
-  _AccountOption('#16A34A', 'Verde'),
-  _AccountOption('#DC2626', 'Rojo'),
-  _AccountOption('#EA580C', 'Naranja'),
-  _AccountOption('#7C3AED', 'Morado'),
+  _AccountOption('billetera', 'Cuenta digital'),
 ];

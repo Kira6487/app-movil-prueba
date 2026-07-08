@@ -1,4 +1,5 @@
 ﻿import 'package:finanzas_personales/app.dart';
+import 'package:finanzas_personales/database/app_database.dart';
 import 'package:finanzas_personales/screens/reports/reports_screen.dart';
 import 'package:finanzas_personales/screens/transactions/transaction_form_screen.dart';
 import 'package:flutter/material.dart';
@@ -9,6 +10,10 @@ void main() {
   setUpAll(() {
     sqfliteFfiInit();
     databaseFactory = databaseFactoryFfi;
+  });
+
+  tearDown(() async {
+    await AppDatabase.instance.close();
   });
 
   testWidgets('muestra la pantalla de inicio', (tester) async {
@@ -26,7 +31,10 @@ void main() {
       const MaterialApp(home: TransactionFormScreen(type: 'income')),
     );
     await tester.pump();
-    await tester.pump(const Duration(milliseconds: 100));
+    await tester.runAsync(
+      () async => Future<void>.delayed(const Duration(milliseconds: 250)),
+    );
+    await tester.pump();
 
     expect(tester.takeException(), isNull);
     expect(find.text('Registrar ingreso'), findsWidgets);
@@ -38,7 +46,10 @@ void main() {
       const MaterialApp(home: TransactionFormScreen(type: 'expense')),
     );
     await tester.pump();
-    await tester.pump(const Duration(milliseconds: 100));
+    await tester.runAsync(
+      () async => Future<void>.delayed(const Duration(milliseconds: 250)),
+    );
+    await tester.pump();
 
     expect(tester.takeException(), isNull);
     expect(find.text('Registrar gasto'), findsWidgets);

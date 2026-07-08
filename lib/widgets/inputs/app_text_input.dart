@@ -13,6 +13,7 @@ class AppTextInput extends StatelessWidget {
     this.maxLines = 1,
     this.readOnly = false,
     this.onTap,
+    this.onChanged,
     this.suffixIcon,
   });
 
@@ -26,6 +27,7 @@ class AppTextInput extends StatelessWidget {
   final int maxLines;
   final bool readOnly;
   final VoidCallback? onTap;
+  final ValueChanged<String>? onChanged;
   final Widget? suffixIcon;
 
   @override
@@ -38,6 +40,7 @@ class AppTextInput extends StatelessWidget {
       maxLines: maxLines,
       readOnly: readOnly,
       onTap: onTap,
+      onChanged: onChanged,
       decoration: InputDecoration(
         labelText: label,
         hintText: hintText,

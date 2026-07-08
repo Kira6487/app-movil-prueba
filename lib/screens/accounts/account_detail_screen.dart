@@ -7,6 +7,7 @@ import '../../services/account_service.dart';
 import '../../services/transaction_service.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_text_styles.dart';
+import '../../utils/app_icon_mapper.dart';
 import '../../utils/currency_formatter.dart';
 import '../../widgets/buttons/app_primary_button.dart';
 import '../../widgets/buttons/app_secondary_button.dart';
@@ -15,8 +16,8 @@ import '../../widgets/common/app_card.dart';
 import '../../widgets/common/app_scaffold.dart';
 import '../../widgets/common/empty_state.dart';
 import '../../widgets/common/section_header.dart';
-import '../placeholders/action_placeholder_screen.dart';
 import '../transactions/transaction_form_screen.dart';
+import '../transfers/transfer_form_screen.dart';
 import 'account_form_screen.dart';
 
 class AccountDetailScreen extends StatelessWidget {
@@ -122,7 +123,6 @@ class _AccountSummary extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 16),
-          const _InfoRow(label: 'Banco', value: 'No disponible en demo'),
           _InfoRow(label: 'Tipo', value: accountTypeLabel(account.accountType)),
           _InfoRow(label: 'Moneda', value: account.currency),
           _InfoRow(
@@ -168,21 +168,10 @@ class _AccountActionGrid extends StatelessWidget {
           label: 'Transferir',
           icon: Icons.swap_horiz,
           onPressed: () => Navigator.of(context).push(
-            MaterialPageRoute<void>(
-              builder: (_) => const ActionPlaceholderScreen(
-                title: 'Transferencia',
-                description:
-                    'Transferencia funcional pendiente para una fase posterior.',
-                icon: Icons.swap_horiz,
-                color: AppColors.blue,
-              ),
+            MaterialPageRoute<bool>(
+              builder: (_) => TransferFormScreen(initialFromAccount: account),
             ),
           ),
-        ),
-        AppSecondaryButton(
-          label: 'Eliminar cuenta',
-          icon: Icons.delete_outline,
-          onPressed: () => _confirmDelete(context),
         ),
       ],
     );
@@ -194,51 +183,11 @@ class _AccountActionGrid extends StatelessWidget {
         builder: (_) => TransactionFormScreen(
           type: type,
           initialAccount: account,
+          lockAccount: true,
         ),
       ),
     );
     TransactionChangeNotifier.notifyChanged();
-  }
-
-  Future<void> _confirmDelete(BuildContext context) async {
-    final movements = await AccountService().countAccountMovements(account.id!);
-    if (!context.mounted) return;
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Eliminar cuenta'),
-        content: Text(
-          movements > 0
-              ? 'Esta cuenta tiene $movements movimientos. Para proteger el historial no se borrara fisicamente.'
-              : 'Esta accion eliminara la cuenta sin movimientos.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancelar'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: Text(movements > 0 ? 'Entendido' : 'Eliminar'),
-          ),
-        ],
-      ),
-    );
-    if (confirmed != true || !context.mounted) return;
-
-    if (movements > 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('No se elimino: la cuenta tiene historial.'),
-        ),
-      );
-      return;
-    }
-
-    await AccountService().deleteAccount(account.id!);
-    TransactionChangeNotifier.notifyChanged();
-    if (!context.mounted) return;
-    Navigator.of(context).pop(true);
   }
 }
 
@@ -370,7 +319,7 @@ String accountTypeLabel(String type) {
     'sueldo' => 'Sueldo',
     'plazo_fijo' => 'Plazo fijo',
     'efectivo' => 'Efectivo',
-    'billetera' => 'Billetera digital',
+    'billetera' => 'Cuenta digital',
     _ => type,
   };
 }
@@ -383,11 +332,5 @@ Color colorFromHex(String? value) {
 }
 
 IconData iconForAccount(String? value) {
-  return switch (value) {
-    'bank' => Icons.account_balance_outlined,
-    'cash' => Icons.payments_outlined,
-    'card' => Icons.credit_card,
-    'savings' => Icons.savings_outlined,
-    _ => Icons.account_balance_wallet_outlined,
-  };
+  return iconDataForId(value);
 }

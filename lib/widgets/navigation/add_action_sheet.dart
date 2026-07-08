@@ -7,6 +7,7 @@ import '../../models/quick_action_model.dart';
 import '../../providers/transaction_change_notifier.dart';
 import '../../screens/placeholders/action_placeholder_screen.dart';
 import '../../screens/transactions/transaction_form_screen.dart';
+import '../../screens/transfers/transfer_form_screen.dart';
 import '../../services/account_service.dart';
 import '../../services/category_service.dart';
 import '../../services/quick_action_service.dart';
@@ -14,6 +15,7 @@ import '../../services/transaction_service.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_radii.dart';
 import '../../theme/app_text_styles.dart';
+import '../../utils/app_icon_mapper.dart';
 import '../../utils/date_utils.dart';
 import '../../widgets/common/empty_state.dart';
 
@@ -210,10 +212,15 @@ class _AddActionSheetState extends State<AddActionSheet> {
             saving: _saving,
             onPressed: _saving ? null : _saveExpense,
           ),
-          if (data.quickActions.isNotEmpty) ...[
-            const SizedBox(height: 24),
-            const Text('Botones rapidos', style: AppTextStyles.sectionTitle),
-            const SizedBox(height: 12),
+          const SizedBox(height: 24),
+          const Text('Botones rapidos', style: AppTextStyles.sectionTitle),
+          const SizedBox(height: 12),
+          if (data.quickActions.isEmpty)
+            const Text(
+              'No tienes botones rapidos activos. Configuralos desde Ajustes.',
+              style: AppTextStyles.muted,
+            )
+          else ...[
             SizedBox(
               height: 78,
               child: ListView.separated(
@@ -225,7 +232,7 @@ class _AddActionSheetState extends State<AddActionSheet> {
                 itemBuilder: (context, index) {
                   final action = data.quickActions[index];
                   return _QuickExpenseChip(
-                    icon: _iconForQuickAction(action.name),
+                    icon: iconDataForId(action.icon),
                     title: action.name,
                     amount: _formatQuickAmount(action),
                     color: _colorFromHex(action.color),
@@ -272,14 +279,7 @@ class _AddActionSheetState extends State<AddActionSheet> {
                     icon: Icons.sync_alt,
                     title: 'Transferencia',
                     color: AppColors.blue,
-                    onTap: () => _openPlaceholder(
-                      context,
-                      title: 'Transferencia',
-                      description:
-                          'La transferencia funcional se implementara mas adelante.',
-                      icon: Icons.swap_horiz,
-                      color: AppColors.blue,
-                    ),
+                    onTap: () => _openTransfer(context),
                   ),
                   _SecondaryActionTile(
                     icon: Icons.calendar_month_outlined,
@@ -288,7 +288,7 @@ class _AddActionSheetState extends State<AddActionSheet> {
                     onTap: () => _openPlaceholder(
                       context,
                       title: 'Pago programado',
-                      description: 'No disponible en demo.',
+                      description: 'Accion informativa en esta fase.',
                       icon: Icons.event_available_outlined,
                       color: AppColors.orange,
                     ),
@@ -300,7 +300,7 @@ class _AddActionSheetState extends State<AddActionSheet> {
                     onTap: () => _openPlaceholder(
                       context,
                       title: 'Ahorro',
-                      description: 'No disponible en demo.',
+                      description: 'Accion informativa en esta fase.',
                       icon: Icons.savings_outlined,
                       color: AppColors.purple,
                     ),
@@ -377,6 +377,16 @@ class _AddActionSheetState extends State<AddActionSheet> {
     );
   }
 
+  void _openTransfer(BuildContext context) {
+    final navigator = Navigator.of(context);
+    navigator.pop();
+    navigator.push(
+      MaterialPageRoute<void>(
+        builder: (_) => const TransferFormScreen(),
+      ),
+    );
+  }
+
   void _openPlaceholder(
     BuildContext context, {
     required String title,
@@ -433,15 +443,6 @@ class _AddActionSheetState extends State<AddActionSheet> {
       if (itemId == id) return item;
     }
     return null;
-  }
-
-  IconData _iconForQuickAction(String name) {
-    final normalized = name.toLowerCase();
-    if (normalized.contains('pasaje')) return Icons.directions_bus;
-    if (normalized.contains('cafe')) return Icons.local_cafe;
-    if (normalized.contains('postre')) return Icons.cake_outlined;
-    if (normalized.contains('taxi')) return Icons.local_taxi;
-    return Icons.restaurant;
   }
 
   Color _colorFromHex(String? value) {

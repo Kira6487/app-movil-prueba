@@ -3,16 +3,14 @@ import 'package:flutter/material.dart';
 import '../../models/account_model.dart';
 import '../../providers/transaction_change_notifier.dart';
 import '../../services/account_service.dart';
-import '../../theme/app_colors.dart';
 import '../../widgets/buttons/app_primary_button.dart';
 import '../../widgets/buttons/app_secondary_button.dart';
 import '../../widgets/cards/account_card.dart';
-import '../../widgets/common/app_card.dart';
 import '../../widgets/common/app_scaffold.dart';
 import '../../widgets/common/empty_state.dart';
 import '../../widgets/common/section_header.dart';
-import '../placeholders/action_placeholder_screen.dart';
 import '../transactions/transactions_screen.dart';
+import '../transfers/transfer_form_screen.dart';
 import 'account_detail_screen.dart';
 import 'account_form_screen.dart';
 
@@ -26,10 +24,9 @@ class AccountsScreen extends StatelessWidget {
       children: [
         SectionHeader(
           title: 'Tus cuentas',
-          subtitle: 'Saldos locales cargados desde SQLite',
+          subtitle: 'Gestiona tus movimientos de forma local',
         ),
         _AccountActions(),
-        _FutureIntegrationsCard(),
         _AccountsList(),
       ],
     );
@@ -123,14 +120,14 @@ class _AccountActions extends StatelessWidget {
               child: AppSecondaryButton(
                 label: 'Transferir',
                 icon: Icons.swap_horiz,
-                onPressed: () => _openPlaceholder(
-                  context,
-                  title: 'Transferencia entre cuentas',
-                  description:
-                      'La transferencia funcional se implementara mas adelante.',
-                  icon: Icons.swap_horiz,
-                  color: AppColors.blue,
-                ),
+                onPressed: () async {
+                  await Navigator.of(context).push(
+                    MaterialPageRoute<bool>(
+                      builder: (_) => const TransferFormScreen(),
+                    ),
+                  );
+                  TransactionChangeNotifier.notifyChanged();
+                },
               ),
             ),
           ],
@@ -146,48 +143,6 @@ class _AccountActions extends StatelessWidget {
           ),
         ),
       ],
-    );
-  }
-
-  void _openPlaceholder(
-    BuildContext context, {
-    required String title,
-    required String description,
-    required IconData icon,
-    required Color color,
-  }) {
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => ActionPlaceholderScreen(
-          title: title,
-          description: description,
-          icon: icon,
-          color: color,
-        ),
-      ),
-    );
-  }
-}
-
-class _FutureIntegrationsCard extends StatelessWidget {
-  const _FutureIntegrationsCard();
-
-  @override
-  Widget build(BuildContext context) {
-    return const AppCard(
-      backgroundColor: AppColors.surfaceAlt,
-      child: Row(
-        children: [
-          Icon(Icons.link_outlined, color: AppColors.textMuted),
-          SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              'Integraciones futuras: banca movil y Google Wallet. '
-              'Proximamente, no disponible en demo.',
-            ),
-          ),
-        ],
-      ),
     );
   }
 }

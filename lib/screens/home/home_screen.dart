@@ -25,7 +25,7 @@ class HomeScreen extends StatelessWidget {
           tooltip: 'Notificaciones',
           onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Notificaciones estarán disponibles pronto'),
+              content: Text('No hay notificaciones por revisar'),
             ),
           ),
           icon: const Icon(Icons.notifications_outlined),

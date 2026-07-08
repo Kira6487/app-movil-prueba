@@ -2,6 +2,7 @@
 import 'package:finanzas_personales/models/account_model.dart';
 import 'package:finanzas_personales/models/category_model.dart';
 import 'package:finanzas_personales/models/financial_transaction_model.dart';
+import 'package:finanzas_personales/models/quick_action_model.dart';
 import 'package:finanzas_personales/models/transfer_model.dart';
 import 'package:finanzas_personales/services/account_service.dart';
 import 'package:finanzas_personales/services/category_service.dart';
@@ -476,10 +477,12 @@ void main() {
     expect(history.single.transaction.comment, 'Bono');
   });
 
-  test('transfiere entre cuentas sin crear ingreso o gasto', () async {
+  test('transfiere SOL a SOL y crea movimientos relacionados', () async {
     final accounts = await accountService.getVisibleAccounts();
-    final from = accounts.first;
-    final to = accounts[1];
+    final solAccounts =
+        accounts.where((account) => account.currency == 'SOL').toList();
+    final from = solAccounts.first;
+    final to = solAccounts[1];
     final now = AppDateUtils.nowIso();
 
     await transferService.insertTransfer(
@@ -498,10 +501,238 @@ void main() {
     final updatedFrom = await accountService.getAccountById(from.id!);
     final updatedTo = await accountService.getAccountById(to.id!);
     final transactions = await transactionService.getAllTransactions();
+    final transfers = await transferService.getAllTransfers();
 
     expect(updatedFrom!.currentBalance, from.currentBalance - 30);
     expect(updatedTo!.currentBalance, to.currentBalance + 30);
-    expect(transactions, isEmpty);
+    expect(transfers, hasLength(1));
+    expect(transactions, hasLength(2));
+    expect(transactions.map((transaction) => transaction.type),
+        containsAll(['expense', 'income']));
+    expect(
+      transactions.every(
+        (transaction) => transaction.comment!.startsWith('Transferencia #'),
+      ),
+      isTrue,
+    );
+  });
+
+  test('transfiere USD a USD y crea historial en ambas cuentas', () async {
+    final accounts = await accountService.getVisibleAccounts();
+    final from = accounts.firstWhere((account) => account.currency == 'USD');
+    final now = AppDateUtils.nowIso();
+    final toId = await accountService.insertAccount(
+      AccountModel(
+        name: 'Cuenta USD secundaria',
+        accountType: 'ahorros',
+        currency: 'USD',
+        initialBalance: 50,
+        currentBalance: 50,
+        createdAt: now,
+      ),
+    );
+    final to = (await accountService.getAccountById(toId))!;
+
+    await transferService.insertTransfer(
+      TransferModel(
+        fromAccountId: from.id!,
+        toAccountId: to.id!,
+        amountFrom: 25,
+        currencyFrom: 'USD',
+        amountTo: 25,
+        currencyTo: 'USD',
+        date: now,
+        createdAt: now,
+      ),
+    );
+
+    final updatedFrom = await accountService.getAccountById(from.id!);
+    final updatedTo = await accountService.getAccountById(to.id!);
+    final fromHistory =
+        await transactionService.getTransactionHistoryByAccount(from.id!);
+    final toHistory =
+        await transactionService.getTransactionHistoryByAccount(to.id!);
+
+    expect(updatedFrom!.currentBalance, from.currentBalance - 25);
+    expect(updatedTo!.currentBalance, to.currentBalance + 25);
+    expect(fromHistory.single.transaction.type, 'expense');
+    expect(toHistory.single.transaction.type, 'income');
+  });
+
+  test('transfiere SOL a USD con tipo de cambio manual', () async {
+    final accounts = await accountService.getVisibleAccounts();
+    final from = accounts.firstWhere((account) => account.currency == 'SOL');
+    final to = accounts.firstWhere((account) => account.currency == 'USD');
+    final now = AppDateUtils.nowIso();
+
+    await transferService.insertTransfer(
+      TransferModel(
+        fromAccountId: from.id!,
+        toAccountId: to.id!,
+        amountFrom: 100,
+        currencyFrom: 'SOL',
+        amountTo: 100 / 3.75,
+        currencyTo: 'USD',
+        exchangeRate: 3.75,
+        date: now,
+        createdAt: now,
+      ),
+    );
+
+    final updatedFrom = await accountService.getAccountById(from.id!);
+    final updatedTo = await accountService.getAccountById(to.id!);
+    final transactions = await transactionService.getAllTransactions();
+
+    expect(updatedFrom!.currentBalance, from.currentBalance - 100);
+    expect(updatedTo!.currentBalance, closeTo(to.currentBalance + 26.67, 0.01));
+    expect(transactions, hasLength(2));
+  });
+
+  test('transfiere USD a SOL con tipo de cambio manual', () async {
+    final accounts = await accountService.getVisibleAccounts();
+    final from = accounts.firstWhere((account) => account.currency == 'USD');
+    final to = accounts.firstWhere((account) => account.currency == 'SOL');
+    final now = AppDateUtils.nowIso();
+
+    await transferService.insertTransfer(
+      TransferModel(
+        fromAccountId: from.id!,
+        toAccountId: to.id!,
+        amountFrom: 10,
+        currencyFrom: 'USD',
+        amountTo: 37.5,
+        currencyTo: 'SOL',
+        exchangeRate: 3.75,
+        date: now,
+        createdAt: now,
+      ),
+    );
+
+    final updatedFrom = await accountService.getAccountById(from.id!);
+    final updatedTo = await accountService.getAccountById(to.id!);
+    final transactions = await transactionService.getAllTransactions();
+
+    expect(updatedFrom!.currentBalance, from.currentBalance - 10);
+    expect(updatedTo!.currentBalance, to.currentBalance + 37.5);
+    expect(transactions, hasLength(2));
+  });
+
+  test('no permite transferencia invalida', () async {
+    final account = (await accountService.getVisibleAccounts()).first;
+    final now = AppDateUtils.nowIso();
+
+    expect(
+      () => transferService.insertTransfer(
+        TransferModel(
+          fromAccountId: account.id!,
+          toAccountId: account.id!,
+          amountFrom: 10,
+          currencyFrom: account.currency,
+          amountTo: 10,
+          currencyTo: account.currency,
+          date: now,
+          createdAt: now,
+        ),
+      ),
+      throwsArgumentError,
+    );
+    expect(
+      () => transferService.insertTransfer(
+        TransferModel(
+          fromAccountId: account.id!,
+          toAccountId: account.id! + 1,
+          amountFrom: 0,
+          currencyFrom: account.currency,
+          amountTo: 0,
+          currencyTo: account.currency,
+          date: now,
+          createdAt: now,
+        ),
+      ),
+      throwsArgumentError,
+    );
+  });
+
+  test('crea edita y elimina boton rapido persistente', () async {
+    final quickActionService = QuickActionService(database: database);
+    final account = (await accountService.getVisibleAccounts()).first;
+    final category = (await categoryService.getAllCategories())
+        .firstWhere((category) => category.type == 'expense');
+    final now = AppDateUtils.nowIso();
+
+    final id = await quickActionService.insertQuickAction(
+      QuickActionModel(
+        name: 'Snack',
+        amount: 7,
+        currency: 'SOL',
+        categoryId: category.id!,
+        accountId: account.id!,
+        icon: 'food',
+        color: '#20C982',
+        sortOrder: 8,
+        createdAt: now,
+      ),
+    );
+    await quickActionService.updateQuickAction(
+      QuickActionModel(
+        id: id,
+        name: 'Snack editado',
+        amount: 9,
+        currency: 'SOL',
+        categoryId: category.id!,
+        accountId: account.id!,
+        icon: 'coffee',
+        color: '#FFB020',
+        isActive: false,
+        sortOrder: 9,
+        createdAt: now,
+      ),
+    );
+
+    final all = await quickActionService.getAllQuickActions(
+      activeOnly: false,
+    );
+    final edited = all.firstWhere((action) => action.id == id);
+    expect(edited.name, 'Snack editado');
+    expect(edited.isActive, isFalse);
+
+    await quickActionService.deleteQuickAction(id);
+    final afterDelete = await quickActionService.getAllQuickActions(
+      activeOnly: false,
+    );
+    expect(afterDelete.any((action) => action.id == id), isFalse);
+  });
+
+  test('ajuste manual genera movimiento por diferencia', () async {
+    final account = (await accountService.getVisibleAccounts()).first;
+    final category = await categoryService.getOrCreateCategory(
+      name: 'Ajuste Manual',
+      type: 'income',
+      icon: 'wallet',
+      color: '#20C982',
+    );
+    final now = AppDateUtils.nowIso();
+
+    await transactionService.insertTransaction(
+      FinancialTransactionModel(
+        type: 'income',
+        amount: 12,
+        currency: account.currency,
+        accountId: account.id!,
+        categoryId: category.id!,
+        date: now,
+        comment: 'Ajuste Manual',
+        createdAt: now,
+      ),
+    );
+
+    final updated = await accountService.getAccountById(account.id!);
+    final history = await transactionService.getTransactionHistoryByAccount(
+      account.id!,
+    );
+
+    expect(updated!.currentBalance, account.currentBalance + 12);
+    expect(history.single.transaction.comment, 'Ajuste Manual');
   });
 
   test('lee botones rapidos iniciales', () async {

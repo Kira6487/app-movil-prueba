@@ -11,6 +11,7 @@ import '../../services/quick_action_service.dart';
 import '../../services/transaction_service.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_text_styles.dart';
+import '../../utils/app_icon_mapper.dart';
 import '../../utils/date_utils.dart';
 import '../../widgets/buttons/app_primary_button.dart';
 import '../../widgets/buttons/app_secondary_button.dart';
@@ -29,12 +30,14 @@ class TransactionFormScreen extends StatefulWidget {
     this.initialQuickAction,
     this.initialAccount,
     this.initialTransaction,
+    this.lockAccount = false,
   });
 
   final String type;
   final QuickActionModel? initialQuickAction;
   final AccountModel? initialAccount;
   final FinancialTransactionModel? initialTransaction;
+  final bool lockAccount;
 
   @override
   State<TransactionFormScreen> createState() => _TransactionFormScreenState();
@@ -90,7 +93,7 @@ class _TransactionFormScreenState extends State<TransactionFormScreen> {
     final categories = (await CategoryService().getAllCategories())
         .where((category) => category.type == widget.type)
         .toList();
-    final quickActions = _isExpense
+    final quickActions = _isExpense && !widget.lockAccount
         ? await QuickActionService().getAllQuickActions()
         : <QuickActionModel>[];
 
@@ -153,7 +156,7 @@ class _TransactionFormScreenState extends State<TransactionFormScreen> {
                 title: 'Faltan datos locales',
                 message: data.accounts.isEmpty
                     ? 'Registra una cuenta antes de crear movimientos.'
-                    : 'Registra categorías para este tipo de movimiento.',
+                    : 'Registra categorias para este tipo de movimiento.',
                 icon: Icons.inventory_2_outlined,
               );
             }
@@ -163,9 +166,10 @@ class _TransactionFormScreenState extends State<TransactionFormScreen> {
               children: [
                 if (_isExpense &&
                     !_isEditing &&
+                    !widget.lockAccount &&
                     data.quickActions.isNotEmpty) ...[
                   const SectionHeader(
-                    title: 'Botones rápidos',
+                    title: 'Botones rapidos',
                     subtitle:
                         'Precargan el formulario; puedes editar antes de guardar.',
                   ),
@@ -217,22 +221,37 @@ class _TransactionFormScreenState extends State<TransactionFormScreen> {
                           ),
                         ],
                         const SizedBox(height: 14),
-                        AppDropdownField<AccountModel>(
-                          label: 'Cuenta',
-                          items: data.accounts,
-                          itemLabel: (account) =>
-                              '${account.name} · ${account.currency}',
-                          value: _selectedAccount,
-                          prefixIcon: Icons.account_balance_wallet_outlined,
-                          onChanged: (value) {
-                            setState(() => _selectedAccount = value);
-                          },
-                          validator: (value) =>
-                              value == null ? 'Selecciona una cuenta' : null,
-                        ),
+                        if (widget.lockAccount)
+                          AppTextInput(
+                            label: 'Cuenta',
+                            controller: TextEditingController(
+                              text: _selectedAccount == null
+                                  ? ''
+                                  : '${_selectedAccount!.name} - ${_selectedAccount!.currency}',
+                            ),
+                            enabled: false,
+                            prefixIcon: Icons.account_balance_wallet_outlined,
+                            validator: (_) => _selectedAccount == null
+                                ? 'Selecciona una cuenta'
+                                : null,
+                          )
+                        else
+                          AppDropdownField<AccountModel>(
+                            label: 'Cuenta',
+                            items: data.accounts,
+                            itemLabel: (account) =>
+                                '${account.name} - ${account.currency}',
+                            value: _selectedAccount,
+                            prefixIcon: Icons.account_balance_wallet_outlined,
+                            onChanged: (value) {
+                              setState(() => _selectedAccount = value);
+                            },
+                            validator: (value) =>
+                                value == null ? 'Selecciona una cuenta' : null,
+                          ),
                         const SizedBox(height: 14),
                         AppDropdownField<CategoryModel>(
-                          label: 'Categoría',
+                          label: 'Categoria',
                           items: data.categories,
                           itemLabel: (category) => category.name,
                           value: _selectedCategory,
@@ -241,7 +260,7 @@ class _TransactionFormScreenState extends State<TransactionFormScreen> {
                             setState(() => _selectedCategory = value);
                           },
                           validator: (value) =>
-                              value == null ? 'Selecciona una categoría' : null,
+                              value == null ? 'Selecciona una categoria' : null,
                         ),
                         const SizedBox(height: 14),
                         AppTextInput(
@@ -453,7 +472,7 @@ class _QuickActionList extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.only(bottom: 10),
               child: QuickActionButton(
-                icon: _iconForQuickAction(action.name),
+                icon: iconDataForId(action.icon),
                 title: action.name,
                 description:
                     '${action.currency} ${action.amount.toStringAsFixed(2)}',
@@ -464,15 +483,6 @@ class _QuickActionList extends StatelessWidget {
         ],
       ),
     );
-  }
-
-  IconData _iconForQuickAction(String name) {
-    final normalized = name.toLowerCase();
-    if (normalized.contains('pasaje')) return Icons.directions_bus;
-    if (normalized.contains('café')) return Icons.local_cafe;
-    if (normalized.contains('postre')) return Icons.cake_outlined;
-    if (normalized.contains('taxi')) return Icons.local_taxi;
-    return Icons.restaurant;
   }
 
   Color _colorFromHex(String? value) {
