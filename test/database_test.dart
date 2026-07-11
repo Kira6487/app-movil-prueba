@@ -1,10 +1,14 @@
 import 'package:finanzas_personales/database/app_database.dart';
 import 'package:finanzas_personales/models/account_model.dart';
+import 'package:finanzas_personales/models/budget_rule_model.dart';
+import 'package:finanzas_personales/models/budget_summary_model.dart';
 import 'package:finanzas_personales/models/category_model.dart';
 import 'package:finanzas_personales/models/financial_transaction_model.dart';
 import 'package:finanzas_personales/models/quick_action_model.dart';
 import 'package:finanzas_personales/models/transfer_model.dart';
 import 'package:finanzas_personales/services/account_service.dart';
+import 'package:finanzas_personales/services/budget_calculator.dart';
+import 'package:finanzas_personales/services/budget_service.dart';
 import 'package:finanzas_personales/services/category_service.dart';
 import 'package:finanzas_personales/services/exchange_rate_service.dart';
 import 'package:finanzas_personales/services/quick_action_service.dart';
@@ -20,6 +24,7 @@ void main() {
   late AccountService accountService;
   late TransactionService transactionService;
   late TransferService transferService;
+  late BudgetService budgetService;
 
   setUpAll(() {
     sqfliteFfiInit();
@@ -35,6 +40,7 @@ void main() {
     accountService = AccountService(database: database);
     transactionService = TransactionService(database: database);
     transferService = TransferService(database: database);
+    budgetService = BudgetService(database: database);
   });
 
   tearDown(() async {
@@ -368,7 +374,8 @@ void main() {
   test('registro rapido guarda gasto y actualiza saldo', () async {
     final menu = (await QuickActionService(
       database: database,
-    ).getAllQuickActions()).firstWhere((action) => action.name == 'Menú');
+    ).getAllQuickActions())
+        .firstWhere((action) => action.name == 'Menú');
     final account = await accountService.getAccountById(menu.accountId!);
     final now = AppDateUtils.nowIso();
 
@@ -487,9 +494,8 @@ void main() {
 
   test('transfiere SOL a SOL y crea movimientos relacionados', () async {
     final accounts = await accountService.getVisibleAccounts();
-    final solAccounts = accounts
-        .where((account) => account.currency == 'SOL')
-        .toList();
+    final solAccounts =
+        accounts.where((account) => account.currency == 'SOL').toList();
     final from = solAccounts.first;
     final to = solAccounts[1];
     final now = AppDateUtils.nowIso();
@@ -798,5 +804,222 @@ void main() {
 
     expect(latest, isNotNull);
     expect(latest!.rate, 3.80);
+  });
+
+  test('persiste y edita un presupuesto por categoria', () async {
+    final category = (await categoryService.getAllCategories())
+        .firstWhere((item) => item.type == 'expense');
+    final now = AppDateUtils.nowIso();
+    final id = await budgetService.insertBudgetRule(
+      BudgetRuleModel(
+        name: 'Comida mensual',
+        categoryId: category.id,
+        amount: 600,
+        currency: 'SOL',
+        recurrenceType: BudgetRecurrenceType.monthly,
+        startDate: '2026-07-01T00:00:00.000',
+        createdAt: now,
+      ),
+    );
+
+    final created = (await budgetService.getAllBudgetRules()).single;
+    expect(created.id, id);
+    expect(created.amount, 600);
+
+    await budgetService.updateBudgetRule(created.copyWith(amount: 650));
+    final edited = (await budgetService.getAllBudgetRules()).single;
+    expect(edited.amount, 650);
+  });
+
+  test('migra reglas de presupuesto v1 sin borrar datos', () async {
+    final path =
+        '/tmp/duna_budget_migration_${DateTime.now().microsecondsSinceEpoch}.db';
+    final oldDatabase = await databaseFactoryFfi.openDatabase(
+      path,
+      options: OpenDatabaseOptions(
+        version: 1,
+        onCreate: (db, _) async {
+          await db.execute('''
+CREATE TABLE categories (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL,
+  type TEXT NOT NULL,
+  icon TEXT,
+  color TEXT,
+  is_active INTEGER NOT NULL DEFAULT 1,
+  created_at TEXT NOT NULL
+)
+''');
+          await db.execute('''
+CREATE TABLE budget_rules (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL,
+  category_id INTEGER NOT NULL,
+  amount REAL NOT NULL,
+  currency TEXT NOT NULL,
+  recurrence_type TEXT NOT NULL,
+  selected_weekdays TEXT,
+  start_date TEXT,
+  end_date TEXT,
+  is_active INTEGER NOT NULL DEFAULT 1,
+  created_at TEXT NOT NULL
+)
+''');
+        },
+      ),
+    );
+    final categoryId = await oldDatabase.insert('categories', {
+      'name': 'Comida',
+      'type': 'expense',
+      'created_at': '2026-07-01T00:00:00.000',
+    });
+    await oldDatabase.insert('budget_rules', {
+      'name': 'Presupuesto anterior',
+      'category_id': categoryId,
+      'amount': 250,
+      'currency': 'SOL',
+      'recurrence_type': BudgetRecurrenceType.monthly,
+      'is_active': 1,
+      'created_at': '2026-07-01T00:00:00.000',
+    });
+    await oldDatabase.close();
+
+    final upgraded = AppDatabase.test(
+      databaseFactory: databaseFactoryFfi,
+      databasePath: path,
+    );
+    final migrated =
+        await BudgetService(database: upgraded).getAllBudgetRules();
+
+    expect(migrated, hasLength(1));
+    expect(migrated.single.name, 'Presupuesto anterior');
+    expect(migrated.single.amount, 250);
+    await upgraded.close();
+    await databaseFactoryFfi.deleteDatabase(path);
+  });
+
+  test('calcula repeticion por dias y unidades para el mes', () {
+    const rule = BudgetRuleModel(
+      name: 'Pasajes',
+      budgetType: BudgetType.recurrence,
+      categoryId: 1,
+      amount: 3.20,
+      unitsPerDay: 2,
+      currency: 'SOL',
+      recurrenceType: BudgetRecurrenceType.customWeekdays,
+      selectedWeekdays: '1,2,3,4,5',
+      startDate: '2026-07-01T00:00:00.000',
+      createdAt: '2026-07-01T00:00:00.000',
+    );
+
+    expect(BudgetCalculator.occurrencesForMonth(rule, 2026, 7), hasLength(23));
+    expect(
+        BudgetCalculator.monthlyAmount(rule, 2026, 7), closeTo(147.2, 0.001));
+  });
+
+  test('clasifica estados de presupuesto en 80 y 100 por ciento', () {
+    expect(
+      BudgetStatus.from(spent: 79, budget: 100),
+      BudgetStatus.good,
+    );
+    expect(
+      BudgetStatus.from(spent: 80, budget: 100),
+      BudgetStatus.warning,
+    );
+    expect(
+      BudgetStatus.from(spent: 100, budget: 100),
+      BudgetStatus.exceeded,
+    );
+  });
+
+  test('compara gastos reales y excluye ingresos ajustes y transferencias',
+      () async {
+    final categories = await categoryService.getAllCategories();
+    final food = categories.firstWhere((item) => item.name == 'Comida');
+    final accounts = (await accountService.getVisibleAccounts())
+        .where((item) => item.currency == 'SOL')
+        .toList();
+    const date = '2026-07-10T00:00:00.000';
+    final now = AppDateUtils.nowIso();
+
+    await transferService.insertTransfer(
+      TransferModel(
+        fromAccountId: accounts[0].id!,
+        toAccountId: accounts[1].id!,
+        amountFrom: 20,
+        currencyFrom: 'SOL',
+        amountTo: 20,
+        currencyTo: 'SOL',
+        date: date,
+        createdAt: now,
+      ),
+    );
+    final transferCategory = (await categoryService.getAllCategories())
+        .firstWhere((item) => item.name == 'Transferencia enviada');
+
+    for (final transaction in [
+      FinancialTransactionModel(
+        type: 'expense',
+        amount: 30,
+        currency: 'SOL',
+        accountId: accounts[0].id!,
+        categoryId: food.id!,
+        date: date,
+        comment: 'Almuerzo',
+        createdAt: now,
+      ),
+      FinancialTransactionModel(
+        type: 'income',
+        amount: 50,
+        currency: 'SOL',
+        accountId: accounts[0].id!,
+        categoryId: food.id!,
+        date: date,
+        comment: 'Devolución',
+        createdAt: now,
+      ),
+      FinancialTransactionModel(
+        type: 'expense',
+        amount: 10,
+        currency: 'SOL',
+        accountId: accounts[0].id!,
+        categoryId: food.id!,
+        date: date,
+        comment: 'Ajuste Manual',
+        createdAt: now,
+      ),
+    ]) {
+      await transactionService.insertTransaction(transaction);
+    }
+
+    for (final category in [food, transferCategory]) {
+      await budgetService.insertBudgetRule(
+        BudgetRuleModel(
+          name: category.name,
+          categoryId: category.id,
+          amount: 100,
+          currency: 'SOL',
+          recurrenceType: BudgetRecurrenceType.monthly,
+          startDate: '2026-07-01T00:00:00.000',
+          createdAt: now,
+        ),
+      );
+    }
+
+    final overview = await budgetService.getOverview(year: 2026, month: 7);
+    expect(overview.monthBudget, 200);
+    expect(overview.monthSpent, 30);
+    expect(
+      overview.items
+          .firstWhere((item) => item.view.rule.name == 'Comida')
+          .spent,
+      30,
+    );
+    expect(
+      overview.items
+          .firstWhere((item) => item.view.rule.name == 'Transferencia enviada')
+          .spent,
+      0,
+    );
   });
 }

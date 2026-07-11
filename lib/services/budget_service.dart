@@ -1,6 +1,7 @@
 import '../database/app_database.dart';
 import '../models/budget_rule_model.dart';
 import '../models/budget_summary_model.dart';
+import '../utils/date_utils.dart';
 import 'budget_calculator.dart';
 
 class BudgetService {
@@ -14,7 +15,7 @@ class BudgetService {
   }) async {
     final db = await _database.database;
     final rows = await db.query(
-      'budget_rules',
+      'budgets',
       where: activeOnly ? 'is_active = ?' : null,
       whereArgs: activeOnly ? [1] : null,
       orderBy: 'created_at DESC, id DESC',
@@ -26,34 +27,29 @@ class BudgetService {
     bool activeOnly = true,
   }) async {
     final db = await _database.database;
-    final rows = await db.rawQuery(
-      '''
-SELECT
-  b.id,
-  b.name,
-  b.category_id,
-  b.amount,
-  b.currency,
-  b.recurrence_type,
-  b.selected_weekdays,
-  b.start_date,
-  b.end_date,
-  b.is_active,
-  b.created_at,
-  c.name AS category_name
-FROM budget_rules b
-INNER JOIN categories c ON c.id = b.category_id
+    final rows = await db.rawQuery('''
+SELECT b.*, c.name AS category_name, c.icon AS category_icon,
+       c.color AS category_color
+FROM budgets b
+LEFT JOIN categories c ON c.id = b.category_id
 ${activeOnly ? 'WHERE b.is_active = 1' : ''}
 ORDER BY b.created_at DESC, b.id DESC
-''',
-    );
+''');
     return rows.map(BudgetRuleView.fromMap).toList();
+  }
+
+  Future<BudgetRuleView?> getBudgetRuleView(int id) async {
+    final views = await getBudgetRuleViews(activeOnly: false);
+    for (final view in views) {
+      if (view.rule.id == id) return view;
+    }
+    return null;
   }
 
   Future<int> insertBudgetRule(BudgetRuleModel rule) async {
     _validateRule(rule);
     final db = await _database.database;
-    return db.insert('budget_rules', rule.toMap()..remove('id'));
+    return db.insert('budgets', rule.toMap()..remove('id'));
   }
 
   Future<int> updateBudgetRule(BudgetRuleModel rule) async {
@@ -61,11 +57,12 @@ ORDER BY b.created_at DESC, b.id DESC
     if (id == null) {
       throw ArgumentError('Budget rule id is required for update.');
     }
-    _validateRule(rule);
+    final updated = rule.copyWith(updatedAt: AppDateUtils.nowIso());
+    _validateRule(updated);
     final db = await _database.database;
     return db.update(
-      'budget_rules',
-      rule.toMap()..remove('id'),
+      'budgets',
+      updated.toMap()..remove('id'),
       where: 'id = ?',
       whereArgs: [id],
     );
@@ -74,8 +71,8 @@ ORDER BY b.created_at DESC, b.id DESC
   Future<int> deactivateBudgetRule(int id) async {
     final db = await _database.database;
     return db.update(
-      'budget_rules',
-      {'is_active': 0},
+      'budgets',
+      {'is_active': 0, 'updated_at': AppDateUtils.nowIso()},
       where: 'id = ?',
       whereArgs: [id],
     );
@@ -87,95 +84,113 @@ ORDER BY b.created_at DESC, b.id DESC
     DateTime? today,
   }) async {
     final effectiveToday = today ?? DateTime.now();
-    final rules = await getBudgetRuleViews();
-    final categoryBudget = <int, _CategoryBudget>{};
+    final views = await getBudgetRuleViews();
+    final exchangeRate = await _latestUsdRate();
+    final monthExpense = await _expenseByCategory(
+      start: DateTime(year, month),
+      endExclusive: DateTime(year, month + 1),
+    );
+    final monthEnd = DateTime(year, month + 1);
+    final effectiveEnd =
+        effectiveToday.year == year && effectiveToday.month == month
+            ? DateTime(year, month, effectiveToday.day + 1)
+            : monthEnd;
+    final accumulatedExpense = await _expenseByCategory(
+      start: DateTime(year, month),
+      endExclusive: effectiveEnd.isAfter(monthEnd) ? monthEnd : effectiveEnd,
+    );
+
+    final budgetedCategories = views
+        .where((view) => view.rule.budgetType != BudgetType.savings)
+        .map((view) => view.rule.categoryId)
+        .whereType<int>()
+        .toSet();
+    final items = <BudgetItemSummary>[];
     var monthBudget = 0.0;
     var accumulatedBudget = 0.0;
 
-    for (final view in rules) {
+    for (final view in views) {
       final rule = view.rule;
-      final budgeted = BudgetCalculator.monthlyAmount(rule, year, month);
+      final limit = BudgetCalculator.monthlyAmount(rule, year, month);
       final accumulated = BudgetCalculator.accumulatedAmount(
         rule,
         year,
         month,
         effectiveToday,
       );
-      monthBudget += budgeted;
-      accumulatedBudget += accumulated;
-      final current = categoryBudget[rule.categoryId];
-      categoryBudget[rule.categoryId] = _CategoryBudget(
-        categoryName: view.categoryName,
-        amount: (current?.amount ?? 0) + budgeted,
-      );
+      final spentBase = rule.budgetType == BudgetType.savings
+          ? 0.0
+          : monthExpense[rule.categoryId] ?? 0;
+      final baseLimit = _toBase(limit, rule.currency, exchangeRate);
+      monthBudget += baseLimit;
+      accumulatedBudget += _toBase(accumulated, rule.currency, exchangeRate);
+      items.add(BudgetItemSummary(
+        view: view,
+        limit: limit,
+        spent: _fromBase(spentBase, rule.currency, exchangeRate),
+        baseLimit: baseLimit,
+        baseSpent: spentBase,
+        formula: BudgetCalculator.formula(rule),
+      ));
     }
 
-    final monthSpentByCategory = await _expenseByCategory(
-      start: DateTime(year, month),
-      endExclusive: DateTime(year, month + 1),
+    final monthSpent = budgetedCategories.fold<double>(
+      0,
+      (sum, id) => sum + (monthExpense[id] ?? 0),
     );
-    final accumulatedEnd = DateTime(
-      effectiveToday.year,
-      effectiveToday.month,
-      effectiveToday.day + 1,
+    final accumulatedSpent = budgetedCategories.fold<double>(
+      0,
+      (sum, id) => sum + (accumulatedExpense[id] ?? 0),
     );
-    final accumulatedSpentByCategory = await _expenseByCategory(
-      start: DateTime(year, month),
-      endExclusive: accumulatedEnd,
-    );
-
-    final categoryIds = <int>{
-      ...categoryBudget.keys,
-      ...monthSpentByCategory.keys,
-    };
-    final categories = <BudgetCategoryComparison>[];
-    for (final categoryId in categoryIds) {
-      final budget = categoryBudget[categoryId];
-      categories.add(
+    final categories = <BudgetCategoryComparison>[
+      for (final id in budgetedCategories)
         BudgetCategoryComparison(
-          categoryId: categoryId,
-          categoryName: budget?.categoryName ??
-              await _categoryNameById(categoryId) ??
-              'Categoria',
-          budgeted: budget?.amount ?? 0,
-          spent: monthSpentByCategory[categoryId] ?? 0,
+          categoryId: id,
+          categoryName: _categoryName(views, id),
+          budgeted: items
+              .where((item) => item.view.rule.categoryId == id)
+              .fold(0, (sum, item) => sum + item.baseLimit),
+          spent: monthExpense[id] ?? 0,
         ),
-      );
-    }
-    categories.sort((a, b) => b.budgeted.compareTo(a.budgeted));
+    ]..sort((a, b) => b.budgeted.compareTo(a.budgeted));
 
     return BudgetOverview(
       monthBudget: monthBudget,
       accumulatedBudget: accumulatedBudget,
-      monthSpent:
-          monthSpentByCategory.values.fold(0, (sum, value) => sum + value),
-      accumulatedSpent: accumulatedSpentByCategory.values
-          .fold(0, (sum, value) => sum + value),
+      monthSpent: monthSpent,
+      accumulatedSpent: accumulatedSpent,
       categories: categories,
-      rulesCount: rules.length,
+      items: items,
+      rulesCount: views.length,
     );
+  }
+
+  Future<BudgetItemSummary?> getItemSummary({
+    required int budgetId,
+    required int year,
+    required int month,
+  }) async {
+    final overview = await getOverview(year: year, month: month);
+    for (final item in overview.items) {
+      if (item.view.rule.id == budgetId) return item;
+    }
+    return null;
   }
 
   Future<List<BudgetRuleView>> getProjectedRulesForDate(DateTime date) async {
     final views = await getBudgetRuleViews();
-    final projected = <BudgetRuleView>[];
-    for (final view in views) {
+    return views.where((view) {
       final occurrences = BudgetCalculator.occurrencesForMonth(
         view.rule,
         date.year,
         date.month,
         until: date,
       );
-      if (occurrences.any(
-        (item) =>
-            item.year == date.year &&
-            item.month == date.month &&
-            item.day == date.day,
-      )) {
-        projected.add(view);
-      }
-    }
-    return projected;
+      return occurrences.any((item) =>
+          item.year == date.year &&
+          item.month == date.month &&
+          item.day == date.day);
+    }).toList();
   }
 
   Future<Map<int, double>> _expenseByCategory({
@@ -183,43 +198,61 @@ ORDER BY b.created_at DESC, b.id DESC
     required DateTime endExclusive,
   }) async {
     final db = await _database.database;
-    final rows = await db.rawQuery(
-      '''
-SELECT category_id, SUM(COALESCE(amount_in_base_currency, amount)) AS total
-FROM financial_transactions
-WHERE type = 'expense' AND date >= ? AND date < ?
-GROUP BY category_id
-''',
-      [start.toIso8601String(), endExclusive.toIso8601String()],
-    );
+    final rows = await db.rawQuery('''
+SELECT t.category_id,
+       SUM(COALESCE(t.amount_in_base_currency, t.amount)) AS total
+FROM financial_transactions t
+INNER JOIN accounts a ON a.id = t.account_id
+WHERE t.type = 'expense'
+  AND a.is_hidden_from_budget = 0
+  AND t.date >= ? AND t.date < ?
+  AND (t.comment IS NULL OR (
+    t.comment NOT LIKE 'Transferencia #%'
+    AND t.comment NOT LIKE 'Ajuste Manual%'
+  ))
+GROUP BY t.category_id
+''', [start.toIso8601String(), endExclusive.toIso8601String()]);
     return {
       for (final row in rows)
         row['category_id'] as int: ((row['total'] as num?) ?? 0).toDouble(),
     };
   }
 
-  Future<String?> _categoryNameById(int categoryId) async {
+  Future<double> _latestUsdRate() async {
     final db = await _database.database;
     final rows = await db.query(
-      'categories',
-      columns: ['name'],
-      where: 'id = ?',
-      whereArgs: [categoryId],
+      'exchange_rates',
+      columns: ['rate'],
+      where: "from_currency = 'USD' AND to_currency = 'SOL'",
+      orderBy: 'date DESC, id DESC',
       limit: 1,
     );
-    if (rows.isEmpty) return null;
-    return rows.first['name'] as String?;
+    return rows.isEmpty ? 1 : (rows.first['rate'] as num).toDouble();
+  }
+
+  double _toBase(double amount, String currency, double rate) =>
+      currency == 'USD' ? amount * rate : amount;
+  double _fromBase(double amount, String currency, double rate) =>
+      currency == 'USD' && rate > 0 ? amount / rate : amount;
+
+  String _categoryName(List<BudgetRuleView> views, int categoryId) {
+    return views
+        .firstWhere((view) => view.rule.categoryId == categoryId)
+        .categoryName;
   }
 
   void _validateRule(BudgetRuleModel rule) {
     if (rule.name.trim().isEmpty) {
       throw ArgumentError('Budget name is required.');
     }
-    if (rule.categoryId <= 0) {
-      throw ArgumentError('A valid category is required.');
+    if (!BudgetType.values.contains(rule.budgetType)) {
+      throw ArgumentError('A valid budget type is required.');
     }
-    if (rule.amount <= 0) {
-      throw ArgumentError('Budget amount must be greater than zero.');
+    if (rule.budgetType != BudgetType.savings && rule.categoryId == null) {
+      throw ArgumentError('A category is required.');
+    }
+    if (rule.amount <= 0 || rule.unitsPerDay <= 0) {
+      throw ArgumentError('Budget amounts must be greater than zero.');
     }
     if (rule.currency != 'SOL' && rule.currency != 'USD') {
       throw ArgumentError('Currency must be SOL or USD.');
@@ -232,14 +265,4 @@ GROUP BY category_id
       throw ArgumentError('Select at least one custom weekday.');
     }
   }
-}
-
-class _CategoryBudget {
-  const _CategoryBudget({
-    required this.categoryName,
-    required this.amount,
-  });
-
-  final String categoryName;
-  final double amount;
 }

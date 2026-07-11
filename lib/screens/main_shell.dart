@@ -6,6 +6,7 @@ import 'accounts/accounts_screen.dart';
 import 'calendar/calendar_screen.dart';
 import 'home/home_screen.dart';
 import 'reports/reports_screen.dart';
+import 'budgets/budget_list_screen.dart';
 
 class MainShell extends StatefulWidget {
   const MainShell({super.key});
@@ -20,6 +21,7 @@ class _MainShellState extends State<MainShell> {
   static const _pages = [
     HomeScreen(),
     CalendarScreen(),
+    BudgetListScreen(),
     AccountsScreen(),
     ReportsScreen(),
   ];
@@ -87,6 +89,11 @@ class _MainShellState extends State<MainShell> {
               NavigationDestination(
                 icon: _AddButtonIcon(),
                 label: '',
+              ),
+              NavigationDestination(
+                icon: Icon(Icons.track_changes_outlined),
+                selectedIcon: Icon(Icons.track_changes),
+                label: 'Presupuestos',
               ),
               NavigationDestination(
                 icon: Icon(Icons.account_balance_wallet_outlined),

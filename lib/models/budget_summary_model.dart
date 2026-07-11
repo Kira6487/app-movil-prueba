@@ -4,17 +4,43 @@ class BudgetRuleView {
   const BudgetRuleView({
     required this.rule,
     required this.categoryName,
+    this.categoryIcon,
+    this.categoryColor,
   });
 
   final BudgetRuleModel rule;
   final String categoryName;
+  final String? categoryIcon;
+  final String? categoryColor;
 
-  factory BudgetRuleView.fromMap(Map<String, Object?> map) {
-    return BudgetRuleView(
-      rule: BudgetRuleModel.fromMap(map),
-      categoryName: map['category_name'] as String? ?? 'Categoria',
-    );
-  }
+  factory BudgetRuleView.fromMap(Map<String, Object?> map) => BudgetRuleView(
+        rule: BudgetRuleModel.fromMap(map),
+        categoryName: map['category_name'] as String? ?? 'Sin categoría',
+        categoryIcon: map['category_icon'] as String?,
+        categoryColor: map['category_color'] as String?,
+      );
+}
+
+class BudgetItemSummary {
+  const BudgetItemSummary({
+    required this.view,
+    required this.limit,
+    required this.spent,
+    required this.baseLimit,
+    required this.baseSpent,
+    required this.formula,
+  });
+
+  final BudgetRuleView view;
+  final double limit;
+  final double spent;
+  final double baseLimit;
+  final double baseSpent;
+  final String formula;
+
+  double get available => limit - spent;
+  double get usagePercent => limit <= 0 ? 0 : spent / limit;
+  BudgetStatus get status => BudgetStatus.from(spent: spent, budget: limit);
 }
 
 class BudgetCategoryComparison {
@@ -41,6 +67,7 @@ class BudgetOverview {
     required this.monthSpent,
     required this.accumulatedSpent,
     required this.categories,
+    required this.items,
     required this.rulesCount,
   });
 
@@ -49,6 +76,7 @@ class BudgetOverview {
   final double monthSpent;
   final double accumulatedSpent;
   final List<BudgetCategoryComparison> categories;
+  final List<BudgetItemSummary> items;
   final int rulesCount;
 
   double get available => monthBudget - monthSpent;
@@ -61,11 +89,8 @@ class BudgetOverview {
         spent: accumulatedSpent,
         budget: accumulatedBudget,
       );
-
-  BudgetStatus get monthlyStatus => BudgetStatus.from(
-        spent: monthSpent,
-        budget: monthBudget,
-      );
+  BudgetStatus get monthlyStatus =>
+      BudgetStatus.from(spent: monthSpent, budget: monthBudget);
 }
 
 enum BudgetStatus {
@@ -76,17 +101,16 @@ enum BudgetStatus {
 
   static BudgetStatus from({required double spent, required double budget}) {
     if (budget <= 0) return BudgetStatus.empty;
-    if (spent > budget) return BudgetStatus.exceeded;
-    if (spent >= budget * 0.85) return BudgetStatus.warning;
+    final ratio = spent / budget;
+    if (ratio >= 1) return BudgetStatus.exceeded;
+    if (ratio >= 0.8) return BudgetStatus.warning;
     return BudgetStatus.good;
   }
 
-  String get label {
-    return switch (this) {
-      BudgetStatus.empty => 'Sin presupuesto',
-      BudgetStatus.good => 'Bueno',
-      BudgetStatus.warning => 'En alerta',
-      BudgetStatus.exceeded => 'Excedido',
-    };
-  }
+  String get label => switch (this) {
+        BudgetStatus.empty => 'Sin presupuesto',
+        BudgetStatus.good => 'En control',
+        BudgetStatus.warning => 'En alerta',
+        BudgetStatus.exceeded => 'Excedido',
+      };
 }

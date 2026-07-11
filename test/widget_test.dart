@@ -21,8 +21,8 @@ void main() {
     await tester.pump();
 
     expect(find.text('Inicio'), findsWidgets);
-    expect(find.text('Resumen del mes'), findsOneWidget);
-    expect(find.text('Mayo 2025'), findsOneWidget);
+    expect(find.text('Resumen de cuentas'), findsOneWidget);
+    expect(find.text('Presupuestos'), findsOneWidget);
   });
 
   testWidgets('renderiza registrar ingreso sin error de Material',
@@ -38,6 +38,32 @@ void main() {
 
     expect(tester.takeException(), isNull);
     expect(find.text('Registrar ingreso'), findsWidgets);
+  });
+
+  testWidgets('abre la pestaña de presupuestos sin overflow', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(360, 760));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(const FinanzasPersonalesApp());
+    await tester.pump();
+    await tester.runAsync(
+      () async => Future<void>.delayed(const Duration(seconds: 1)),
+    );
+    await tester.pump();
+    await tester.tap(find.text('Presupuestos').last);
+    await tester.pump();
+    await tester.runAsync(
+      () async => Future<void>.delayed(const Duration(seconds: 1)),
+    );
+    await tester.pump();
+
+    expect(tester.takeException(), isNull);
+    expect(find.text('Planifica con tus movimientos reales'), findsOneWidget);
+    expect(find.text('Todos'), findsOneWidget);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.runAsync(AppDatabase.instance.close);
+    await tester.pump();
   });
 
   testWidgets('renderiza registrar gasto sin error de Material',

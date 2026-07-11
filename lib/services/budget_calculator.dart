@@ -47,7 +47,9 @@ class BudgetCalculator {
   const BudgetCalculator._();
 
   static double monthlyAmount(BudgetRuleModel rule, int year, int month) {
-    return occurrencesForMonth(rule, year, month).length * rule.amount;
+    return occurrencesForMonth(rule, year, month).length *
+        rule.unitsPerDay *
+        rule.amount;
   }
 
   static double accumulatedAmount(
@@ -57,7 +59,24 @@ class BudgetCalculator {
     DateTime until,
   ) {
     return occurrencesForMonth(rule, year, month, until: until).length *
+        rule.unitsPerDay *
         rule.amount;
+  }
+
+  static String formula(BudgetRuleModel rule) {
+    if (rule.budgetType != BudgetType.recurrence) {
+      return BudgetRecurrenceType.label(rule.recurrenceType);
+    }
+    final days = parseWeekdays(rule.selectedWeekdays)
+        .map((day) =>
+            const ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'][day - 1])
+        .join(', ');
+    final units = rule.unitsPerDay == rule.unitsPerDay.roundToDouble()
+        ? rule.unitsPerDay.toStringAsFixed(0)
+        : rule.unitsPerDay.toStringAsFixed(1);
+    final amount = rule.amount.toStringAsFixed(2);
+    return '${days.isEmpty ? BudgetRecurrenceType.label(rule.recurrenceType) : days} · '
+        '$units por día · ${rule.currency == 'USD' ? r'$' : 'S/'} $amount';
   }
 
   static List<DateTime> occurrencesForDate(

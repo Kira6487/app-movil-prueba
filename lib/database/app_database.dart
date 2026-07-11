@@ -63,10 +63,36 @@ class AppDatabase {
       await SeedData.insertIfEmpty(db);
     }
 
+    Future<void> upgrade(Database db, int oldVersion, int newVersion) async {
+      if (oldVersion < 2) {
+        await db.execute(DatabaseSchema.createBudgets);
+        await db.execute('''
+INSERT INTO budgets (
+  id, name, budget_type, category_id, amount, currency, recurrence_type,
+  selected_weekdays, units_per_day, start_date, end_date, icon_key,
+  color_hex, is_active, created_at, updated_at
+)
+SELECT
+  id,
+  name,
+  CASE
+    WHEN recurrence_type IN ('custom_weekdays', 'weekly_once')
+      OR recurrence_type LIKE 'weekday_%' THEN 'recurrence'
+    ELSE 'category'
+  END,
+  category_id, amount, currency, recurrence_type, selected_weekdays, 1,
+  start_date, end_date, 'wallet', '#005FD1', is_active, created_at, created_at
+FROM budget_rules
+WHERE NOT EXISTS (SELECT 1 FROM budgets)
+''');
+      }
+    }
+
     final options = OpenDatabaseOptions(
       version: DatabaseSchema.version,
       onConfigure: configure,
       onCreate: create,
+      onUpgrade: upgrade,
     );
 
     if (factory != null) {
@@ -78,6 +104,7 @@ class AppDatabase {
       version: DatabaseSchema.version,
       onConfigure: configure,
       onCreate: create,
+      onUpgrade: upgrade,
     );
   }
 }

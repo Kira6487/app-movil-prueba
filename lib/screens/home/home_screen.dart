@@ -1,15 +1,20 @@
 import 'package:flutter/material.dart';
 
+import '../../models/budget_summary_model.dart';
+import '../../models/account_model.dart';
+import '../../providers/budget_change_notifier.dart';
 import '../../providers/transaction_change_notifier.dart';
+import '../../services/account_service.dart';
+import '../../services/budget_service.dart';
 import '../../services/transaction_service.dart';
 import '../../theme/app_colors.dart';
+import '../../utils/currency_formatter.dart';
 import '../../widgets/cards/progress_bar_card.dart';
 import '../../widgets/cards/status_card.dart';
 import '../../widgets/cards/summary_card.dart';
 import '../../widgets/cards/transaction_history_card.dart';
 import '../../widgets/common/app_scaffold.dart';
 import '../../widgets/common/empty_state.dart';
-import '../../widgets/common/month_selector.dart';
 import '../../widgets/common/section_header.dart';
 import '../settings/settings_screen.dart';
 
@@ -24,9 +29,7 @@ class HomeScreen extends StatelessWidget {
         IconButton(
           tooltip: 'Notificaciones',
           onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('No hay notificaciones por revisar'),
-            ),
+            const SnackBar(content: Text('No hay notificaciones por revisar')),
           ),
           icon: const Icon(Icons.notifications_outlined),
         ),
@@ -39,107 +42,136 @@ class HomeScreen extends StatelessWidget {
         ),
       ],
       children: const [
-        MonthSelector(),
-        Row(
-          children: [
-            Expanded(
-              child: StatusCard(
-                title: 'Estado Diario',
-                status: 'Bueno',
-                description: 'Gasto dentro del presupuesto',
-                color: AppColors.green,
-                icon: Icons.check_circle_outline,
-              ),
-            ),
-            SizedBox(width: 12),
-            Expanded(
-              child: StatusCard(
-                title: 'Estado Mensual',
-                status: 'En alerta',
-                description: 'Vas 78% del presupuesto',
-                color: AppColors.orange,
-                icon: Icons.warning_amber_outlined,
-              ),
-            ),
-          ],
-        ),
+        _BudgetSnapshot(),
         SectionHeader(
-          title: 'Resumen financiero',
-          subtitle: 'Datos demo para validar estructura visual',
-        ),
-        SummaryCard(
-          title: 'Resumen del mes',
-          icon: Icons.receipt_long_outlined,
-          accentColor: AppColors.green,
-          items: [
-            SummaryItem(
-              label: 'Ingreso total',
-              value: 'S/ 2,450.00',
-              valueColor: AppColors.green,
-            ),
-            SummaryItem(label: 'Gasto presupuestado', value: 'S/ 1,800.00'),
-            SummaryItem(
-              label: 'Ahorro presupuestado',
-              value: 'S/ 500.00',
-              valueColor: AppColors.purple,
-            ),
-            SummaryItem(
-              label: 'Gasto real',
-              value: 'S/ 1,410.50',
-              valueColor: AppColors.red,
-            ),
-            SummaryItem(
-              label: 'Disponible',
-              value: 'S/ 389.50',
-              valueColor: AppColors.green,
-            ),
-            SummaryItem(
-              label: 'Ahorro generado',
-              value: 'S/ 389.50',
-              valueColor: AppColors.green,
-            ),
-          ],
-        ),
-        ProgressBarCard(
-          title: 'Gasto real vs. límite de presupuesto',
-          currentLabel: 'S/ 1,410.50 usado',
-          percentLabel: '78%',
-          value: 0.78,
-          color: AppColors.orange,
-        ),
-        SummaryCard(
           title: 'Resumen de cuentas',
-          icon: Icons.account_balance_wallet_outlined,
-          accentColor: AppColors.blue,
-          items: [
-            SummaryItem(
-              label: 'BCP Ahorros',
-              value: 'S/ 850.00',
-              valueColor: AppColors.blue,
-            ),
-            SummaryItem(
-              label: 'Yape',
-              value: 'S/ 120.00',
-              valueColor: AppColors.purple,
-            ),
-            SummaryItem(
-              label: 'Cuenta USD',
-              value: r'$200.00 / S/ 760.00',
-              valueColor: AppColors.green,
-            ),
-            SummaryItem(
-              label: 'Plazo Fijo',
-              value: 'S/ 3,000.00 oculto',
-              valueColor: AppColors.orange,
-            ),
-          ],
+          subtitle: 'Saldos reales guardados en SQLite',
         ),
+        _AccountsSnapshot(),
         SectionHeader(
           title: 'Últimos movimientos',
           subtitle: 'Movimientos reales guardados en SQLite',
         ),
         _LatestTransactions(),
       ],
+    );
+  }
+}
+
+class _BudgetSnapshot extends StatelessWidget {
+  const _BudgetSnapshot();
+
+  @override
+  Widget build(BuildContext context) {
+    return ValueListenableBuilder<int>(
+      valueListenable: BudgetChangeNotifier.version,
+      builder: (context, _, __) {
+        final now = DateTime.now();
+        return FutureBuilder<BudgetOverview>(
+          future: BudgetService().getOverview(year: now.year, month: now.month),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            if (snapshot.hasError) {
+              return const EmptyState(
+                title: 'No se pudo cargar el presupuesto',
+                message: 'Revisa la base local e intenta nuevamente.',
+                icon: Icons.error_outline,
+              );
+            }
+            final overview = snapshot.data!;
+            if (overview.rulesCount == 0) {
+              return const EmptyState(
+                title: 'Sin presupuesto para este mes',
+                message: 'Abre Presupuestos para crear tu primer límite.',
+                icon: Icons.track_changes_outlined,
+              );
+            }
+            final status = overview.monthlyStatus;
+            final color = _statusColor(status);
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const SectionHeader(
+                  title: 'Estado del presupuesto',
+                  subtitle: 'Cálculo real del mes actual',
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: StatusCard(
+                        title: 'Estado mensual',
+                        status: status.label,
+                        description:
+                            '${(overview.monthUsagePercent * 100).toStringAsFixed(0)}% utilizado',
+                        color: color,
+                        icon: status == BudgetStatus.exceeded
+                            ? Icons.error_outline
+                            : Icons.track_changes_outlined,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                ProgressBarCard(
+                  title: 'Gasto real vs. límite de presupuesto',
+                  currentLabel: '${formatSol(overview.monthSpent)} usado',
+                  percentLabel:
+                      '${(overview.monthUsagePercent * 100).toStringAsFixed(0)}%',
+                  value: overview.monthUsagePercent.clamp(0.0, 1.0),
+                  color: color,
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+}
+
+class _AccountsSnapshot extends StatelessWidget {
+  const _AccountsSnapshot();
+
+  @override
+  Widget build(BuildContext context) {
+    return ValueListenableBuilder<int>(
+      valueListenable: TransactionChangeNotifier.version,
+      builder: (context, _, __) => FutureBuilder<List<AccountModel>>(
+        future: AccountService().getAllAccounts(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          final accounts = snapshot.data ?? const [];
+          if (accounts.isEmpty) {
+            return const EmptyState(
+              title: 'Sin cuentas',
+              message: 'Crea una cuenta para ver su saldo aquí.',
+              icon: Icons.account_balance_wallet_outlined,
+            );
+          }
+          return SummaryCard(
+            title: 'Saldos actuales',
+            icon: Icons.account_balance_wallet_outlined,
+            accentColor: AppColors.blue,
+            items: [
+              for (final account in accounts)
+                SummaryItem(
+                  label: account.name,
+                  value: account.currency == 'USD'
+                      ? formatUsd(account.currentBalance)
+                      : formatSol(account.currentBalance),
+                  valueColor: account.isHiddenFromBudget
+                      ? AppColors.textMuted
+                      : AppColors.blue,
+                ),
+            ],
+          );
+        },
+      ),
     );
   }
 }
@@ -151,25 +183,29 @@ class _LatestTransactions extends StatelessWidget {
   Widget build(BuildContext context) {
     return ValueListenableBuilder<int>(
       valueListenable: TransactionChangeNotifier.version,
-      builder: (context, _, __) {
-        return FutureBuilder(
-          future: TransactionService().getLatestTransactions(limit: 10),
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Center(child: CircularProgressIndicator());
-            }
-            if (snapshot.hasError) {
-              return const EmptyState(
-                title: 'No se pudo cargar el historial',
-                message:
-                    'Intenta nuevamente después de registrar un movimiento.',
-                icon: Icons.error_outline,
-              );
-            }
-            return TransactionHistoryCard(items: snapshot.data ?? const []);
-          },
-        );
-      },
+      builder: (context, _, __) => FutureBuilder(
+        future: TransactionService().getLatestTransactions(limit: 10),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          if (snapshot.hasError) {
+            return const EmptyState(
+              title: 'No se pudo cargar el historial',
+              message: 'Intenta nuevamente después de registrar un movimiento.',
+              icon: Icons.error_outline,
+            );
+          }
+          return TransactionHistoryCard(items: snapshot.data ?? const []);
+        },
+      ),
     );
   }
 }
+
+Color _statusColor(BudgetStatus status) => switch (status) {
+      BudgetStatus.warning => AppColors.orange,
+      BudgetStatus.exceeded => AppColors.red,
+      BudgetStatus.good => AppColors.green,
+      BudgetStatus.empty => AppColors.blue,
+    };

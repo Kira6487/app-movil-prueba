@@ -17,11 +17,14 @@ import '../../widgets/common/app_scaffold.dart';
 import '../../widgets/common/empty_state.dart';
 import '../../widgets/inputs/app_dropdown_field.dart';
 import '../../widgets/inputs/app_text_input.dart';
+import '../../widgets/inputs/color_palette_field.dart';
+import '../../widgets/inputs/icon_palette_field.dart';
 
 class BudgetFormScreen extends StatefulWidget {
-  const BudgetFormScreen({super.key, this.initial});
+  const BudgetFormScreen({super.key, this.initial, this.initialMonth});
 
   final BudgetRuleView? initial;
+  final DateTime? initialMonth;
 
   @override
   State<BudgetFormScreen> createState() => _BudgetFormScreenState();
@@ -31,15 +34,21 @@ class _BudgetFormScreenState extends State<BudgetFormScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _amountController = TextEditingController();
+  final _unitsController = TextEditingController(text: '1');
+  final _descriptionController = TextEditingController();
+  final _conditionController = TextEditingController();
 
   late Future<List<CategoryModel>> _categoriesFuture;
   CategoryModel? _selectedCategory;
   String _currency = 'SOL';
-  String _recurrenceType = BudgetRecurrenceType.onceThisMonth;
-  DateTime _startDate = DateTime.now();
+  String _budgetType = BudgetType.category;
+  String _recurrenceType = BudgetRecurrenceType.monthly;
+  late DateTime _startDate;
   DateTime? _endDate;
   bool _isActive = true;
   bool _saving = false;
+  String _icon = 'wallet';
+  String _color = '#005FD1';
   final Set<int> _selectedWeekdays = <int>{};
 
   bool get _isEditing => widget.initial != null;
@@ -47,13 +56,21 @@ class _BudgetFormScreenState extends State<BudgetFormScreen> {
   @override
   void initState() {
     super.initState();
+    final selectedMonth = widget.initialMonth ?? DateTime.now();
+    _startDate = DateTime(selectedMonth.year, selectedMonth.month, 1);
     _categoriesFuture = _loadCategories();
     final initial = widget.initial?.rule;
     if (initial != null) {
       _nameController.text = initial.name;
       _amountController.text = _formatNumber(initial.amount);
       _currency = initial.currency;
+      _budgetType = initial.budgetType;
       _recurrenceType = initial.recurrenceType;
+      _unitsController.text = _formatNumber(initial.unitsPerDay);
+      _descriptionController.text = initial.description ?? '';
+      _conditionController.text = initial.conditionText ?? '';
+      _icon = initial.iconKey ?? _icon;
+      _color = initial.colorHex ?? _color;
       _startDate = DateTime.tryParse(initial.startDate ?? '') ?? DateTime.now();
       _endDate = DateTime.tryParse(initial.endDate ?? '');
       _isActive = initial.isActive;
@@ -66,6 +83,9 @@ class _BudgetFormScreenState extends State<BudgetFormScreen> {
   void dispose() {
     _nameController.dispose();
     _amountController.dispose();
+    _unitsController.dispose();
+    _descriptionController.dispose();
+    _conditionController.dispose();
     super.dispose();
   }
 
@@ -126,20 +146,42 @@ class _BudgetFormScreenState extends State<BudgetFormScreen> {
                               : null,
                     ),
                     const SizedBox(height: 14),
-                    AppDropdownField<CategoryModel>(
-                      label: 'Categoria',
-                      items: categories,
-                      itemLabel: (category) => category.name,
-                      value: _selectedCategory,
-                      prefixIcon: Icons.category_outlined,
-                      onChanged: (value) =>
-                          setState(() => _selectedCategory = value),
-                      validator: (value) =>
-                          value == null ? 'Selecciona una categoria' : null,
+                    AppDropdownField<String>(
+                      label: 'Tipo de presupuesto',
+                      items: BudgetType.values,
+                      itemLabel: BudgetType.label,
+                      value: _budgetType,
+                      prefixIcon: Icons.tune,
+                      onChanged: (value) => setState(() {
+                        _budgetType = value ?? BudgetType.category;
+                        _recurrenceType = _budgetType == BudgetType.recurrence
+                            ? BudgetRecurrenceType.customWeekdays
+                            : BudgetRecurrenceType.monthly;
+                      }),
                     ),
                     const SizedBox(height: 14),
+                    if (_budgetType != BudgetType.savings) ...[
+                      AppDropdownField<CategoryModel>(
+                        label: 'Categoría asociada',
+                        items: categories,
+                        itemLabel: (category) => category.name,
+                        value: _selectedCategory,
+                        prefixIcon: Icons.category_outlined,
+                        onChanged: (value) =>
+                            setState(() => _selectedCategory = value),
+                        validator: (value) =>
+                            _budgetType != BudgetType.savings && value == null
+                                ? 'Selecciona una categoría'
+                                : null,
+                      ),
+                      const SizedBox(height: 14),
+                    ],
                     AppTextInput(
-                      label: 'Monto',
+                      label: _budgetType == BudgetType.recurrence
+                          ? 'Monto unitario'
+                          : (_budgetType == BudgetType.savings
+                              ? 'Objetivo mensual'
+                              : 'Monto límite'),
                       hintText: '0.00',
                       controller: _amountController,
                       keyboardType:
@@ -158,17 +200,7 @@ class _BudgetFormScreenState extends State<BudgetFormScreen> {
                           setState(() => _currency = value ?? 'SOL'),
                     ),
                     const SizedBox(height: 14),
-                    AppDropdownField<String>(
-                      label: 'Tipo de repeticion',
-                      items: BudgetRecurrenceType.values,
-                      itemLabel: BudgetRecurrenceType.label,
-                      value: _recurrenceType,
-                      prefixIcon: Icons.repeat,
-                      onChanged: (value) => setState(() => _recurrenceType =
-                          value ?? BudgetRecurrenceType.onceThisMonth),
-                    ),
-                    if (_recurrenceType ==
-                        BudgetRecurrenceType.customWeekdays) ...[
+                    if (_budgetType == BudgetType.recurrence) ...[
                       const SizedBox(height: 14),
                       _WeekdaySelector(
                         selected: _selectedWeekdays,
@@ -179,6 +211,29 @@ class _BudgetFormScreenState extends State<BudgetFormScreen> {
                               ..addAll(selected);
                           });
                         },
+                      ),
+                      const SizedBox(height: 14),
+                      AppTextInput(
+                        label: 'Cantidad por día',
+                        controller: _unitsController,
+                        keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true),
+                        prefixIcon: Icons.numbers,
+                        validator: _validateAmount,
+                      ),
+                    ],
+                    if (_budgetType == BudgetType.customRule) ...[
+                      const SizedBox(height: 14),
+                      AppTextInput(
+                        label: 'Descripción de la regla',
+                        controller: _descriptionController,
+                        prefixIcon: Icons.notes_outlined,
+                      ),
+                      const SizedBox(height: 14),
+                      AppTextInput(
+                        label: 'Condición opcional',
+                        controller: _conditionController,
+                        prefixIcon: Icons.rule_outlined,
                       ),
                     ],
                     const SizedBox(height: 14),
@@ -214,6 +269,19 @@ class _BudgetFormScreenState extends State<BudgetFormScreen> {
                           'Incluir este presupuesto en los calculos'),
                       value: _isActive,
                       onChanged: (value) => setState(() => _isActive = value),
+                    ),
+                    const SizedBox(height: 14),
+                    IconPaletteField(
+                      label: 'Ícono',
+                      value: _icon,
+                      color: colorFromHex(_color),
+                      onChanged: (value) => setState(() => _icon = value),
+                    ),
+                    const SizedBox(height: 14),
+                    ColorPaletteField(
+                      label: 'Color',
+                      value: _color,
+                      onChanged: (value) => setState(() => _color = value),
                     ),
                     const SizedBox(height: 18),
                     Row(
@@ -280,8 +348,7 @@ class _BudgetFormScreenState extends State<BudgetFormScreen> {
 
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
-    if (_recurrenceType == BudgetRecurrenceType.customWeekdays &&
-        _selectedWeekdays.isEmpty) {
+    if (_budgetType == BudgetType.recurrence && _selectedWeekdays.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
             content: Text('Selecciona al menos un dia personalizado')),
@@ -289,7 +356,7 @@ class _BudgetFormScreenState extends State<BudgetFormScreen> {
       return;
     }
     final category = _selectedCategory;
-    if (category == null) return;
+    if (_budgetType != BudgetType.savings && category == null) return;
 
     setState(() => _saving = true);
     try {
@@ -297,17 +364,26 @@ class _BudgetFormScreenState extends State<BudgetFormScreen> {
       final rule = BudgetRuleModel(
         id: widget.initial?.rule.id,
         name: _nameController.text.trim(),
-        categoryId: category.id!,
+        budgetType: _budgetType,
+        categoryId: _budgetType == BudgetType.savings ? null : category!.id!,
         amount: _parseAmount(_amountController.text)!,
         currency: _currency,
         recurrenceType: _recurrenceType,
-        selectedWeekdays: _recurrenceType == BudgetRecurrenceType.customWeekdays
+        selectedWeekdays: _budgetType == BudgetType.recurrence
             ? BudgetCalculator.encodeWeekdays(_selectedWeekdays)
             : null,
+        unitsPerDay: _budgetType == BudgetType.recurrence
+            ? _parseAmount(_unitsController.text)!
+            : 1,
+        description: _emptyToNull(_descriptionController.text),
+        conditionText: _emptyToNull(_conditionController.text),
         startDate: AppDateUtils.dateOnlyIso(_startDate),
         endDate: _endDate == null ? null : AppDateUtils.dateOnlyIso(_endDate!),
+        iconKey: _icon,
+        colorHex: _color,
         isActive: _isActive,
         createdAt: widget.initial?.rule.createdAt ?? now,
+        updatedAt: now,
       );
       if (_isEditing) {
         await BudgetService().updateBudgetRule(rule);
@@ -351,6 +427,11 @@ class _BudgetFormScreenState extends State<BudgetFormScreen> {
 
   double? _parseAmount(String value) {
     return double.tryParse(value.trim().replaceAll(',', '.'));
+  }
+
+  String? _emptyToNull(String value) {
+    final trimmed = value.trim();
+    return trimmed.isEmpty ? null : trimmed;
   }
 
   String _formatDate(DateTime date) {
