@@ -35,6 +35,7 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
   String _icon = 'wallet';
   bool _hiddenFromBudget = false;
   bool _saving = false;
+  AccountModel? _account;
 
   bool get _isEditing => widget.initial != null;
 
@@ -43,6 +44,7 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
     super.initState();
     final initial = widget.initial;
     if (initial != null) {
+      _account = initial;
       _nameController.text = initial.name;
       _accountType = initial.accountType;
       _currency = initial.currency;
@@ -63,7 +65,7 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final account = widget.initial;
+    final account = _account;
     return AppScaffold(
       title: _isEditing ? 'Editar cuenta' : 'Nueva cuenta',
       children: [
@@ -139,12 +141,20 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
                     label: 'Ajuste de saldo',
                     icon: Icons.tune,
                     onPressed: () async {
-                      await Navigator.of(context).push(
+                      final adjusted = await Navigator.of(context).push<bool>(
                         MaterialPageRoute<bool>(
                           builder: (_) =>
                               AccountBalanceAdjustmentScreen(account: account),
                         ),
                       );
+                      if (adjusted == true) {
+                        final refreshed = await AccountService().getAccountById(
+                          account.id!,
+                        );
+                        if (mounted && refreshed != null) {
+                          setState(() => _account = refreshed);
+                        }
+                      }
                       TransactionChangeNotifier.notifyChanged();
                     },
                   ),
@@ -166,8 +176,9 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,
                   title: const Text('Ocultar del presupuesto'),
-                  subtitle:
-                      const Text('Mantiene esta cuenta fuera de calculos.'),
+                  subtitle: const Text(
+                    'Mantiene esta cuenta fuera de calculos.',
+                  ),
                   value: _hiddenFromBudget,
                   onChanged: (value) {
                     setState(() => _hiddenFromBudget = value);
@@ -179,8 +190,9 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
                     Expanded(
                       child: AppSecondaryButton(
                         label: 'Cancelar',
-                        onPressed:
-                            _saving ? null : () => Navigator.of(context).pop(),
+                        onPressed: _saving
+                            ? null
+                            : () => Navigator.of(context).pop(),
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -208,8 +220,14 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
     setState(() => _saving = true);
     try {
       final initial = widget.initial;
+      final current = _isEditing
+          ? await AccountService().getAccountById(initial!.id!)
+          : null;
+      if (_isEditing && current == null) {
+        throw StateError('La cuenta ya no existe.');
+      }
       final initialBalance = _isEditing
-          ? initial!.initialBalance
+          ? current!.initialBalance
           : (_parseNumber(_initialBalanceController.text) ?? 0);
       final account = AccountModel(
         id: initial?.id,
@@ -217,7 +235,7 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
         accountType: _accountType,
         currency: _currency,
         initialBalance: initialBalance,
-        currentBalance: initial?.currentBalance ?? initialBalance,
+        currentBalance: current?.currentBalance ?? initialBalance,
         isHiddenFromBudget: _hiddenFromBudget,
         color: _color,
         icon: _icon,
@@ -233,9 +251,9 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
       Navigator.of(context).pop(true);
     } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('No se pudo guardar: $error')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('No se pudo guardar: $error')));
     } finally {
       if (mounted) setState(() => _saving = false);
     }

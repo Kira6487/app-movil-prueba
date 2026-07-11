@@ -74,9 +74,7 @@ class _AddActionSheetState extends State<AddActionSheet> {
   Widget build(BuildContext context) {
     return Material(
       color: AppColors.background,
-      borderRadius: const BorderRadius.vertical(
-        top: Radius.circular(32),
-      ),
+      borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
       clipBehavior: Clip.antiAlias,
       elevation: 24,
       shadowColor: AppColors.blue.withValues(alpha: 0.20),
@@ -222,7 +220,7 @@ class _AddActionSheetState extends State<AddActionSheet> {
             )
           else ...[
             SizedBox(
-              height: 78,
+              height: 88,
               child: ListView.separated(
                 scrollDirection: Axis.horizontal,
                 clipBehavior: Clip.none,
@@ -319,10 +317,12 @@ class _AddActionSheetState extends State<AddActionSheet> {
       _amountController.text = _formatNumber(action.amount);
       _currency = action.currency;
       _commentController.text = action.comment ?? action.name;
-      _selectedAccount = _findById(data.accounts, action.accountId) ??
+      _selectedAccount =
+          _findById(data.accounts, action.accountId) ??
           _selectedAccount ??
           data.accounts.first;
-      _selectedCategory = _findById(data.categories, action.categoryId) ??
+      _selectedCategory =
+          _findById(data.categories, action.categoryId) ??
           _selectedCategory ??
           data.categories.first;
     });
@@ -353,15 +353,15 @@ class _AddActionSheetState extends State<AddActionSheet> {
       );
       TransactionChangeNotifier.notifyChanged();
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Gasto registrado')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Gasto registrado')));
       Navigator.of(context).pop(true);
     } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('No se pudo guardar: $error')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('No se pudo guardar: $error')));
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -381,9 +381,7 @@ class _AddActionSheetState extends State<AddActionSheet> {
     final navigator = Navigator.of(context);
     navigator.pop();
     navigator.push(
-      MaterialPageRoute<void>(
-        builder: (_) => const TransferFormScreen(),
-      ),
+      MaterialPageRoute<void>(builder: (_) => const TransferFormScreen()),
     );
   }
 
@@ -764,10 +762,7 @@ class _CommentField extends StatelessWidget {
 }
 
 class _SaveExpenseButton extends StatelessWidget {
-  const _SaveExpenseButton({
-    required this.saving,
-    required this.onPressed,
-  });
+  const _SaveExpenseButton({required this.saving, required this.onPressed});
 
   final bool saving;
   final VoidCallback? onPressed;
@@ -843,7 +838,7 @@ class _QuickExpenseChip extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
         onTap: onTap,
         child: Container(
-          width: 126,
+          width: 146,
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(20),
@@ -881,7 +876,13 @@ class _QuickExpenseChip extends StatelessWidget {
                     const SizedBox(height: 3),
                     Text(
                       amount,
-                      style: AppTextStyles.body.copyWith(color: color),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTextStyles.body.copyWith(
+                        color: color,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ],
                 ),
@@ -919,9 +920,7 @@ class _SecondaryActionTile extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(18),
-            border: Border.all(
-              color: AppColors.border.withValues(alpha: 0.80),
-            ),
+            border: Border.all(color: AppColors.border.withValues(alpha: 0.80)),
             boxShadow: [
               BoxShadow(
                 color: AppColors.blue.withValues(alpha: 0.06),
@@ -944,9 +943,7 @@ class _SecondaryActionTile extends StatelessWidget {
                 textAlign: TextAlign.center,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                style: AppTextStyles.body.copyWith(
-                  fontWeight: FontWeight.w800,
-                ),
+                style: AppTextStyles.body.copyWith(fontWeight: FontWeight.w800),
               ),
             ],
           ),

@@ -1,4 +1,4 @@
-﻿import 'package:finanzas_personales/database/app_database.dart';
+import 'package:finanzas_personales/database/app_database.dart';
 import 'package:finanzas_personales/models/account_model.dart';
 import 'package:finanzas_personales/models/category_model.dart';
 import 'package:finanzas_personales/models/financial_transaction_model.dart';
@@ -79,10 +79,7 @@ void main() {
 
     final accounts = await accountService.getAllAccounts();
 
-    expect(
-      accounts.any((account) => account.name == 'Cuenta test'),
-      isTrue,
-    );
+    expect(accounts.any((account) => account.name == 'Cuenta test'), isTrue);
   });
 
   test('edita cuenta', () async {
@@ -140,8 +137,9 @@ void main() {
 
   test('no elimina cuenta con movimientos', () async {
     final account = (await accountService.getVisibleAccounts()).first;
-    final category = (await categoryService.getAllCategories())
-        .firstWhere((category) => category.type == 'expense');
+    final category = (await categoryService.getAllCategories()).firstWhere(
+      (category) => category.type == 'expense',
+    );
     final now = AppDateUtils.nowIso();
 
     await transactionService.insertTransaction(
@@ -164,8 +162,9 @@ void main() {
 
   test('inserta gasto y actualiza saldo', () async {
     final account = (await accountService.getVisibleAccounts()).first;
-    final category = (await categoryService.getAllCategories())
-        .firstWhere((category) => category.type == 'expense');
+    final category = (await categoryService.getAllCategories()).firstWhere(
+      (category) => category.type == 'expense',
+    );
     final now = AppDateUtils.nowIso();
 
     await transactionService.insertTransaction(
@@ -190,8 +189,9 @@ void main() {
 
   test('inserta ingreso y actualiza saldo', () async {
     final account = (await accountService.getVisibleAccounts()).first;
-    final category = (await categoryService.getAllCategories())
-        .firstWhere((category) => category.type == 'income');
+    final category = (await categoryService.getAllCategories()).firstWhere(
+      (category) => category.type == 'income',
+    );
     final now = AppDateUtils.nowIso();
 
     await transactionService.insertTransaction(
@@ -216,8 +216,9 @@ void main() {
 
   test('edita transaccion y recalcula saldo', () async {
     final account = (await accountService.getVisibleAccounts()).first;
-    final category = (await categoryService.getAllCategories())
-        .firstWhere((category) => category.type == 'expense');
+    final category = (await categoryService.getAllCategories()).firstWhere(
+      (category) => category.type == 'expense',
+    );
     final now = AppDateUtils.nowIso();
 
     final id = await transactionService.insertTransaction(
@@ -256,8 +257,9 @@ void main() {
 
   test('elimina gasto y devuelve saldo', () async {
     final account = (await accountService.getVisibleAccounts()).first;
-    final category = (await categoryService.getAllCategories())
-        .firstWhere((category) => category.type == 'expense');
+    final category = (await categoryService.getAllCategories()).firstWhere(
+      (category) => category.type == 'expense',
+    );
     final now = AppDateUtils.nowIso();
 
     final id = await transactionService.insertTransaction(
@@ -325,10 +327,12 @@ void main() {
   });
 
   test('guarda gasto USD con monto base usando tipo de cambio', () async {
-    final account = (await accountService.getVisibleAccounts())
-        .firstWhere((account) => account.currency == 'USD');
-    final category = (await categoryService.getAllCategories())
-        .firstWhere((category) => category.type == 'expense');
+    final account = (await accountService.getVisibleAccounts()).firstWhere(
+      (account) => account.currency == 'USD',
+    );
+    final category = (await categoryService.getAllCategories()).firstWhere(
+      (category) => category.type == 'expense',
+    );
     final now = AppDateUtils.nowIso();
 
     await transactionService.insertTransaction(
@@ -350,8 +354,9 @@ void main() {
   });
 
   test('quick action carga datos correctos', () async {
-    final actions =
-        await QuickActionService(database: database).getAllQuickActions();
+    final actions = await QuickActionService(
+      database: database,
+    ).getAllQuickActions();
     final menu = actions.firstWhere((action) => action.name == 'Menú');
 
     expect(menu.amount, 12);
@@ -361,9 +366,9 @@ void main() {
   });
 
   test('registro rapido guarda gasto y actualiza saldo', () async {
-    final menu =
-        (await QuickActionService(database: database).getAllQuickActions())
-            .firstWhere((action) => action.name == 'Menú');
+    final menu = (await QuickActionService(
+      database: database,
+    ).getAllQuickActions()).firstWhere((action) => action.name == 'Menú');
     final account = await accountService.getAccountById(menu.accountId!);
     final now = AppDateUtils.nowIso();
 
@@ -391,8 +396,9 @@ void main() {
 
   test('no permite monto 0 o negativo', () async {
     final account = (await accountService.getVisibleAccounts()).first;
-    final category = (await categoryService.getAllCategories())
-        .firstWhere((category) => category.type == 'expense');
+    final category = (await categoryService.getAllCategories()).firstWhere(
+      (category) => category.type == 'expense',
+    );
     final now = AppDateUtils.nowIso();
 
     Future<void> insertWithAmount(double amount) {
@@ -415,8 +421,9 @@ void main() {
 
   test('no permite guardar sin cuenta o categoria valida', () async {
     final account = (await accountService.getVisibleAccounts()).first;
-    final category = (await categoryService.getAllCategories())
-        .firstWhere((category) => category.type == 'expense');
+    final category = (await categoryService.getAllCategories()).firstWhere(
+      (category) => category.type == 'expense',
+    );
     final now = AppDateUtils.nowIso();
 
     expect(
@@ -452,8 +459,9 @@ void main() {
 
   test('historial devuelve movimientos con cuenta y categoria', () async {
     final account = (await accountService.getVisibleAccounts()).first;
-    final category = (await categoryService.getAllCategories())
-        .firstWhere((category) => category.type == 'income');
+    final category = (await categoryService.getAllCategories()).firstWhere(
+      (category) => category.type == 'income',
+    );
     final now = AppDateUtils.nowIso();
 
     await transactionService.insertTransaction(
@@ -479,8 +487,9 @@ void main() {
 
   test('transfiere SOL a SOL y crea movimientos relacionados', () async {
     final accounts = await accountService.getVisibleAccounts();
-    final solAccounts =
-        accounts.where((account) => account.currency == 'SOL').toList();
+    final solAccounts = accounts
+        .where((account) => account.currency == 'SOL')
+        .toList();
     final from = solAccounts.first;
     final to = solAccounts[1];
     final now = AppDateUtils.nowIso();
@@ -507,8 +516,10 @@ void main() {
     expect(updatedTo!.currentBalance, to.currentBalance + 30);
     expect(transfers, hasLength(1));
     expect(transactions, hasLength(2));
-    expect(transactions.map((transaction) => transaction.type),
-        containsAll(['expense', 'income']));
+    expect(
+      transactions.map((transaction) => transaction.type),
+      containsAll(['expense', 'income']),
+    );
     expect(
       transactions.every(
         (transaction) => transaction.comment!.startsWith('Transferencia #'),
@@ -548,10 +559,12 @@ void main() {
 
     final updatedFrom = await accountService.getAccountById(from.id!);
     final updatedTo = await accountService.getAccountById(to.id!);
-    final fromHistory =
-        await transactionService.getTransactionHistoryByAccount(from.id!);
-    final toHistory =
-        await transactionService.getTransactionHistoryByAccount(to.id!);
+    final fromHistory = await transactionService.getTransactionHistoryByAccount(
+      from.id!,
+    );
+    final toHistory = await transactionService.getTransactionHistoryByAccount(
+      to.id!,
+    );
 
     expect(updatedFrom!.currentBalance, from.currentBalance - 25);
     expect(updatedTo!.currentBalance, to.currentBalance + 25);
@@ -656,8 +669,9 @@ void main() {
   test('crea edita y elimina boton rapido persistente', () async {
     final quickActionService = QuickActionService(database: database);
     final account = (await accountService.getVisibleAccounts()).first;
-    final category = (await categoryService.getAllCategories())
-        .firstWhere((category) => category.type == 'expense');
+    final category = (await categoryService.getAllCategories()).firstWhere(
+      (category) => category.type == 'expense',
+    );
     final now = AppDateUtils.nowIso();
 
     final id = await quickActionService.insertQuickAction(
@@ -689,9 +703,7 @@ void main() {
       ),
     );
 
-    final all = await quickActionService.getAllQuickActions(
-      activeOnly: false,
-    );
+    final all = await quickActionService.getAllQuickActions(activeOnly: false);
     final edited = all.firstWhere((action) => action.id == id);
     expect(edited.name, 'Snack editado');
     expect(edited.isActive, isFalse);
@@ -703,7 +715,7 @@ void main() {
     expect(afterDelete.any((action) => action.id == id), isFalse);
   });
 
-  test('ajuste manual genera movimiento por diferencia', () async {
+  test('ajuste manual positivo suma saldo y genera movimiento', () async {
     final account = (await accountService.getVisibleAccounts()).first;
     final category = await categoryService.getOrCreateCategory(
       name: 'Ajuste Manual',
@@ -735,9 +747,43 @@ void main() {
     expect(history.single.transaction.comment, 'Ajuste Manual');
   });
 
+  test('ajuste manual negativo resta saldo y genera movimiento', () async {
+    final account = (await accountService.getVisibleAccounts()).first;
+    final category = await categoryService.getOrCreateCategory(
+      name: 'Ajuste Manual',
+      type: 'expense',
+      icon: 'wallet',
+      color: '#FF4D5E',
+    );
+    final now = AppDateUtils.nowIso();
+
+    await transactionService.insertTransaction(
+      FinancialTransactionModel(
+        type: 'expense',
+        amount: 7.5,
+        currency: account.currency,
+        accountId: account.id!,
+        categoryId: category.id!,
+        date: now,
+        comment: 'Ajuste Manual',
+        createdAt: now,
+      ),
+    );
+
+    final updated = await accountService.getAccountById(account.id!);
+    final history = await transactionService.getTransactionHistoryByAccount(
+      account.id!,
+    );
+
+    expect(updated!.currentBalance, account.currentBalance - 7.5);
+    expect(history.single.transaction.type, 'expense');
+    expect(history.single.transaction.comment, 'Ajuste Manual');
+  });
+
   test('lee botones rapidos iniciales', () async {
-    final actions =
-        await QuickActionService(database: database).getAllQuickActions();
+    final actions = await QuickActionService(
+      database: database,
+    ).getAllQuickActions();
 
     expect(
       actions.map((action) => action.name),
@@ -746,8 +792,9 @@ void main() {
   });
 
   test('lee tipo de cambio inicial', () async {
-    final latest =
-        await ExchangeRateService(database: database).getLatestRate();
+    final latest = await ExchangeRateService(
+      database: database,
+    ).getLatestRate();
 
     expect(latest, isNotNull);
     expect(latest!.rate, 3.80);
