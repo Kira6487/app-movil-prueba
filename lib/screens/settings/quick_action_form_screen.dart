@@ -157,6 +157,9 @@ class _QuickActionFormScreenState extends State<QuickActionFormScreen> {
                       value: _category,
                       prefixIcon: Icons.category_outlined,
                       onChanged: (value) => setState(() => _category = value),
+                      validator: (value) => value == null
+                          ? 'Selecciona una categoría de gasto'
+                          : null,
                     ),
                     const SizedBox(height: 14),
                     AppTextInput(

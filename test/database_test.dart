@@ -12,6 +12,7 @@ import 'package:finanzas_personales/services/budget_service.dart';
 import 'package:finanzas_personales/services/category_service.dart';
 import 'package:finanzas_personales/services/exchange_rate_service.dart';
 import 'package:finanzas_personales/services/quick_action_service.dart';
+import 'package:finanzas_personales/services/savings_service.dart';
 import 'package:finanzas_personales/services/transaction_service.dart';
 import 'package:finanzas_personales/services/transfer_service.dart';
 import 'package:finanzas_personales/utils/date_utils.dart';
@@ -25,6 +26,7 @@ void main() {
   late TransactionService transactionService;
   late TransferService transferService;
   late BudgetService budgetService;
+  late SavingsService savingsService;
 
   setUpAll(() {
     sqfliteFfiInit();
@@ -41,6 +43,7 @@ void main() {
     transactionService = TransactionService(database: database);
     transferService = TransferService(database: database);
     budgetService = BudgetService(database: database);
+    savingsService = SavingsService(database: database);
   });
 
   tearDown(() async {
@@ -68,6 +71,33 @@ void main() {
       categories.any((category) => category.name == 'Test categoria'),
       isTrue,
     );
+  });
+
+  test('separa categorias por alcance y persiste el orden', () async {
+    final expenses = await categoryService.getCategoriesByType(
+      CategoryScope.expense,
+    );
+    final income = await categoryService.getCategoriesByType(
+      CategoryScope.income,
+    );
+    final savings = await categoryService.getCategoriesByType(
+      CategoryScope.savings,
+    );
+
+    expect(expenses, isNotEmpty);
+    expect(income, isNotEmpty);
+    expect(savings, isNotEmpty);
+    expect(expenses.every((category) => category.type == 'expense'), isTrue);
+    expect(income.every((category) => category.type == 'income'), isTrue);
+    expect(savings.every((category) => category.type == 'savings'), isTrue);
+
+    final reversedIds = expenses.reversed.map((item) => item.id!).toList();
+    await categoryService.reorderCategories(CategoryScope.expense, reversedIds);
+    final reordered = await categoryService.getCategoriesByType(
+      CategoryScope.expense,
+    );
+
+    expect(reordered.first.id, reversedIds.first);
   });
 
   test('inserta y lee cuentas', () async {
@@ -164,6 +194,37 @@ void main() {
       accountService.deleteAccount(account.id!),
       throwsStateError,
     );
+  });
+
+  test('desactiva categorias usadas sin borrar historial', () async {
+    final account = (await accountService.getVisibleAccounts()).first;
+    final category = (await categoryService.getCategoriesByType(
+      CategoryScope.expense,
+    ))
+        .first;
+    final now = AppDateUtils.nowIso();
+
+    await transactionService.insertTransaction(
+      FinancialTransactionModel(
+        type: 'expense',
+        amount: 5,
+        currency: account.currency,
+        accountId: account.id!,
+        categoryId: category.id!,
+        date: now,
+        createdAt: now,
+      ),
+    );
+
+    await categoryService.deleteOrDeactivateCategory(category.id!);
+    final inactive = (await categoryService.getAllCategories(activeOnly: false))
+        .firstWhere((item) => item.id == category.id);
+    final activeExpense = await categoryService.getCategoriesByType(
+      CategoryScope.expense,
+    );
+
+    expect(inactive.isActive, isFalse);
+    expect(activeExpense.any((item) => item.id == category.id), isFalse);
   });
 
   test('inserta gasto y actualiza saldo', () async {
@@ -932,15 +993,28 @@ CREATE TABLE budget_rules (
     );
   });
 
-  test('compara gastos reales y excluye ingresos ajustes y transferencias',
+  test('consume presupuestos solo con gastos relacionados y recalcula',
       () async {
     final categories = await categoryService.getAllCategories();
     final food = categories.firstWhere((item) => item.name == 'Comida');
+    final incomeCategory =
+        categories.firstWhere((item) => item.type == CategoryScope.income);
     final accounts = (await accountService.getVisibleAccounts())
         .where((item) => item.currency == 'SOL')
         .toList();
     const date = '2026-07-10T00:00:00.000';
     final now = AppDateUtils.nowIso();
+    final budgetId = await budgetService.insertBudgetRule(
+      BudgetRuleModel(
+        name: 'Comida',
+        categoryId: food.id,
+        amount: 100,
+        currency: 'SOL',
+        recurrenceType: BudgetRecurrenceType.monthly,
+        startDate: '2026-07-01T00:00:00.000',
+        createdAt: now,
+      ),
+    );
 
     await transferService.insertTransfer(
       TransferModel(
@@ -954,26 +1028,27 @@ CREATE TABLE budget_rules (
         createdAt: now,
       ),
     );
-    final transferCategory = (await categoryService.getAllCategories())
-        .firstWhere((item) => item.name == 'Transferencia enviada');
-
-    for (final transaction in [
+    final relatedExpenseId = await transactionService.insertTransaction(
       FinancialTransactionModel(
         type: 'expense',
         amount: 30,
         currency: 'SOL',
         accountId: accounts[0].id!,
         categoryId: food.id!,
+        relatedType: TransactionRelatedType.budget,
+        relatedId: budgetId,
         date: date,
         comment: 'Almuerzo',
         createdAt: now,
       ),
+    );
+    for (final transaction in [
       FinancialTransactionModel(
         type: 'income',
         amount: 50,
         currency: 'SOL',
         accountId: accounts[0].id!,
-        categoryId: food.id!,
+        categoryId: incomeCategory.id!,
         date: date,
         comment: 'Devolución',
         createdAt: now,
@@ -984,30 +1059,28 @@ CREATE TABLE budget_rules (
         currency: 'SOL',
         accountId: accounts[0].id!,
         categoryId: food.id!,
+        relatedType: TransactionRelatedType.budget,
+        relatedId: budgetId,
         date: date,
         comment: 'Ajuste Manual',
+        createdAt: now,
+      ),
+      FinancialTransactionModel(
+        type: 'expense',
+        amount: 20,
+        currency: 'SOL',
+        accountId: accounts[0].id!,
+        categoryId: food.id!,
+        date: date,
+        comment: 'Sin relación',
         createdAt: now,
       ),
     ]) {
       await transactionService.insertTransaction(transaction);
     }
 
-    for (final category in [food, transferCategory]) {
-      await budgetService.insertBudgetRule(
-        BudgetRuleModel(
-          name: category.name,
-          categoryId: category.id,
-          amount: 100,
-          currency: 'SOL',
-          recurrenceType: BudgetRecurrenceType.monthly,
-          startDate: '2026-07-01T00:00:00.000',
-          createdAt: now,
-        ),
-      );
-    }
-
     final overview = await budgetService.getOverview(year: 2026, month: 7);
-    expect(overview.monthBudget, 200);
+    expect(overview.monthBudget, 100);
     expect(overview.monthSpent, 30);
     expect(
       overview.items
@@ -1015,11 +1088,121 @@ CREATE TABLE budget_rules (
           .spent,
       30,
     );
+
+    await transactionService.updateTransaction(
+      FinancialTransactionModel(
+        id: relatedExpenseId,
+        type: 'expense',
+        amount: 45,
+        currency: 'SOL',
+        accountId: accounts[0].id!,
+        categoryId: food.id!,
+        relatedType: TransactionRelatedType.budget,
+        relatedId: budgetId,
+        date: date,
+        comment: 'Almuerzo editado',
+        createdAt: now,
+      ),
+    );
+    final edited = await budgetService.getOverview(year: 2026, month: 7);
+    expect(edited.monthSpent, 45);
+
+    await transactionService.deleteTransaction(relatedExpenseId);
+    final afterDelete = await budgetService.getOverview(year: 2026, month: 7);
+    expect(afterDelete.monthSpent, 0);
+  });
+
+  test('filtra relaciones por categoria fecha dias y vigencia', () async {
+    final categories = await categoryService.getAllCategories();
+    final transport = categories.firstWhere((item) => item.name == 'Pasaje');
+    final food = categories.firstWhere((item) => item.name == 'Comida');
+    final now = AppDateUtils.nowIso();
+
+    await budgetService.insertBudgetRule(
+      BudgetRuleModel(
+        name: 'Pasajes Lun-Jue',
+        budgetType: BudgetType.recurrence,
+        categoryId: transport.id,
+        amount: 4,
+        currency: 'SOL',
+        recurrenceType: BudgetRecurrenceType.customWeekdays,
+        selectedWeekdays: '1,2,3,4',
+        startDate: '2026-07-01T00:00:00.000',
+        endDate: '2026-07-31T00:00:00.000',
+        createdAt: now,
+      ),
+    );
+
+    final monday = await budgetService.getRelatedOptions(
+      categoryId: transport.id!,
+      date: DateTime(2026, 7, 6),
+      operationType: 'expense',
+    );
+    final sunday = await budgetService.getRelatedOptions(
+      categoryId: transport.id!,
+      date: DateTime(2026, 7, 5),
+      operationType: 'expense',
+    );
+    final otherCategory = await budgetService.getRelatedOptions(
+      categoryId: food.id!,
+      date: DateTime(2026, 7, 6),
+      operationType: 'expense',
+    );
+    final outOfRange = await budgetService.getRelatedOptions(
+      categoryId: transport.id!,
+      date: DateTime(2026, 8, 3),
+      operationType: 'expense',
+    );
+
+    expect(monday.map((item) => item.name), contains('Pasajes Lun-Jue'));
+    expect(sunday, isEmpty);
+    expect(otherCategory, isEmpty);
+    expect(outOfRange, isEmpty);
+  });
+
+  test('consume objetivos de ahorro con movimientos relacionados', () async {
+    final account = (await accountService.getVisibleAccounts()).first;
+    final savingsCategory = (await categoryService.getCategoriesByType(
+      CategoryScope.savings,
+    ))
+        .first;
+    final now = AppDateUtils.nowIso();
+    final goalId = await budgetService.insertBudgetRule(
+      BudgetRuleModel(
+        name: 'Fondo de emergencia',
+        budgetType: BudgetType.savings,
+        categoryId: savingsCategory.id,
+        amount: 500,
+        currency: 'SOL',
+        recurrenceType: BudgetRecurrenceType.monthly,
+        startDate: '2026-07-01T00:00:00.000',
+        createdAt: now,
+      ),
+    );
+
+    await transactionService.insertTransaction(
+      FinancialTransactionModel(
+        type: 'savings',
+        amount: 120,
+        currency: 'SOL',
+        accountId: account.id!,
+        categoryId: savingsCategory.id!,
+        relatedType: TransactionRelatedType.savings,
+        relatedId: goalId,
+        date: '2026-07-10T00:00:00.000',
+        createdAt: now,
+      ),
+    );
+
+    final overview = await budgetService.getOverview(year: 2026, month: 7);
+    final item = overview.items.firstWhere(
+      (item) => item.view.rule.name == 'Fondo de emergencia',
+    );
+
+    expect(item.spent, 120);
     expect(
-      overview.items
-          .firstWhere((item) => item.view.rule.name == 'Transferencia enviada')
-          .spent,
-      0,
+      await savingsService.getGoalProgress(goalId),
+      120,
     );
   });
 }

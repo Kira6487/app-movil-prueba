@@ -52,6 +52,9 @@ class _BudgetFormScreenState extends State<BudgetFormScreen> {
   final Set<int> _selectedWeekdays = <int>{};
 
   bool get _isEditing => widget.initial != null;
+  String get _categoryScope => _budgetType == BudgetType.savings
+      ? CategoryScope.savings
+      : CategoryScope.expense;
 
   @override
   void initState() {
@@ -90,9 +93,7 @@ class _BudgetFormScreenState extends State<BudgetFormScreen> {
   }
 
   Future<List<CategoryModel>> _loadCategories() async {
-    final categories = (await CategoryService().getAllCategories())
-        .where((category) => category.type == 'expense')
-        .toList();
+    final categories = await CategoryService().getAllCategories();
     final initial = widget.initial?.rule;
     if (initial != null) {
       for (final category in categories) {
@@ -123,11 +124,14 @@ class _BudgetFormScreenState extends State<BudgetFormScreen> {
                 icon: Icons.error_outline,
               );
             }
-            final categories = snapshot.data ?? const [];
+            final allCategories = snapshot.data ?? const [];
+            final categories = allCategories
+                .where((category) => category.type == _categoryScope)
+                .toList();
             if (categories.isEmpty) {
               return const EmptyState(
-                title: 'No hay categorias de gasto',
-                message: 'Crea categorias antes de registrar presupuestos.',
+                title: 'No hay categorias disponibles',
+                message: 'Crea categorias desde Configuracion antes de seguir.',
                 icon: Icons.category_outlined,
               );
             }
@@ -157,25 +161,28 @@ class _BudgetFormScreenState extends State<BudgetFormScreen> {
                         _recurrenceType = _budgetType == BudgetType.recurrence
                             ? BudgetRecurrenceType.customWeekdays
                             : BudgetRecurrenceType.monthly;
+                        if (_selectedCategory?.type != _categoryScope) {
+                          _selectedCategory = null;
+                        }
                       }),
                     ),
                     const SizedBox(height: 14),
-                    if (_budgetType != BudgetType.savings) ...[
-                      AppDropdownField<CategoryModel>(
-                        label: 'Categoría asociada',
-                        items: categories,
-                        itemLabel: (category) => category.name,
-                        value: _selectedCategory,
-                        prefixIcon: Icons.category_outlined,
-                        onChanged: (value) =>
-                            setState(() => _selectedCategory = value),
-                        validator: (value) =>
-                            _budgetType != BudgetType.savings && value == null
-                                ? 'Selecciona una categoría'
-                                : null,
-                      ),
-                      const SizedBox(height: 14),
-                    ],
+                    AppDropdownField<CategoryModel>(
+                      label: _budgetType == BudgetType.savings
+                          ? 'Categoría de ahorro'
+                          : 'Categoría de gasto',
+                      items: categories,
+                      itemLabel: (category) => category.name,
+                      value: categories.contains(_selectedCategory)
+                          ? _selectedCategory
+                          : null,
+                      prefixIcon: Icons.category_outlined,
+                      onChanged: (value) =>
+                          setState(() => _selectedCategory = value),
+                      validator: (value) =>
+                          value == null ? 'Selecciona una categoría' : null,
+                    ),
+                    const SizedBox(height: 14),
                     AppTextInput(
                       label: _budgetType == BudgetType.recurrence
                           ? 'Monto unitario'
@@ -356,7 +363,7 @@ class _BudgetFormScreenState extends State<BudgetFormScreen> {
       return;
     }
     final category = _selectedCategory;
-    if (_budgetType != BudgetType.savings && category == null) return;
+    if (category == null) return;
 
     setState(() => _saving = true);
     try {
@@ -365,7 +372,7 @@ class _BudgetFormScreenState extends State<BudgetFormScreen> {
         id: widget.initial?.rule.id,
         name: _nameController.text.trim(),
         budgetType: _budgetType,
-        categoryId: _budgetType == BudgetType.savings ? null : category!.id!,
+        categoryId: category.id!,
         amount: _parseAmount(_amountController.text)!,
         currency: _currency,
         recurrenceType: _recurrenceType,

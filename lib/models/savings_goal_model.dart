@@ -2,6 +2,7 @@ class SavingsGoalModel {
   const SavingsGoalModel({
     this.id,
     required this.name,
+    required this.categoryId,
     required this.targetAmount,
     this.currentAmount = 0,
     required this.currency,
@@ -13,6 +14,7 @@ class SavingsGoalModel {
 
   final int? id;
   final String name;
+  final int categoryId;
   final double targetAmount;
   final double currentAmount;
   final String currency;
@@ -25,6 +27,7 @@ class SavingsGoalModel {
       SavingsGoalModel(
         id: map['id'] as int?,
         name: map['name'] as String,
+        categoryId: map['category_id'] as int,
         targetAmount: (map['target_amount'] as num).toDouble(),
         currentAmount: (map['current_amount'] as num).toDouble(),
         currency: map['currency'] as String,
@@ -38,6 +41,7 @@ class SavingsGoalModel {
   Map<String, Object?> toMap() => {
         'id': id,
         'name': name,
+        'category_id': categoryId,
         'target_amount': targetAmount,
         'current_amount': currentAmount,
         'currency': currency,
@@ -50,6 +54,7 @@ class SavingsGoalModel {
   SavingsGoalModel copyWith({
     int? id,
     String? name,
+    int? categoryId,
     double? targetAmount,
     double? currentAmount,
     String? currency,
@@ -61,6 +66,7 @@ class SavingsGoalModel {
     return SavingsGoalModel(
       id: id ?? this.id,
       name: name ?? this.name,
+      categoryId: categoryId ?? this.categoryId,
       targetAmount: targetAmount ?? this.targetAmount,
       currentAmount: currentAmount ?? this.currentAmount,
       currency: currency ?? this.currency,

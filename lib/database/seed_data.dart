@@ -17,18 +17,28 @@ class SeedData {
     final categoryIds = <String, int>{};
     final accountIds = <String, int>{};
 
-    Future<void> insertCategory(String name, String type, String color) async {
+    Future<void> insertCategory(
+      String name,
+      String type,
+      String color, {
+      String? icon,
+      required int sortOrder,
+    }) async {
       final id = await db.insert('categories', {
         'name': name,
         'type': type,
-        'icon': null,
+        'icon': icon,
         'color': color,
+        'icon_key': icon,
+        'color_hex': color,
+        'sort_order': sortOrder,
         'is_active': 1,
         'created_at': now,
       });
       categoryIds[name] = id;
     }
 
+    var sortOrder = 0;
     for (final name in [
       'Comida',
       'Pasaje',
@@ -41,16 +51,47 @@ class SeedData {
       'Café',
       'Otros',
     ]) {
-      await insertCategory(name, 'expense', '#EF4444');
+      sortOrder += 1;
+      await insertCategory(
+        name,
+        'expense',
+        '#EF4444',
+        icon: name == 'Pasaje' ? 'transport' : 'food',
+        sortOrder: sortOrder,
+      );
     }
 
-    for (final name in [
-      'Sueldo',
-      'Freelance',
-      'Devolución',
-      'Otros ingresos'
+    sortOrder = 0;
+    for (final item in [
+      ('Sueldo', 'salary', '#22C55E'),
+      ('Freelance', 'work', '#20C982'),
+      ('Devolución', 'refund', '#38BDF8'),
+      ('Otros ingresos', 'wallet', '#16A34A'),
     ]) {
-      await insertCategory(name, 'income', '#22C55E');
+      sortOrder += 1;
+      await insertCategory(
+        item.$1,
+        'income',
+        item.$3,
+        icon: item.$2,
+        sortOrder: sortOrder,
+      );
+    }
+
+    sortOrder = 0;
+    for (final item in [
+      ('Ahorro general', 'savings', '#7C3AED'),
+      ('Fondo de emergencia', 'piggy', '#005FD1'),
+      ('Meta personal', 'wallet', '#A78BFA'),
+    ]) {
+      sortOrder += 1;
+      await insertCategory(
+        item.$1,
+        'savings',
+        item.$3,
+        icon: item.$2,
+        sortOrder: sortOrder,
+      );
     }
 
     Future<void> insertAccount({

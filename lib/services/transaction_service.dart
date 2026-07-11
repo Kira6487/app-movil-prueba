@@ -1,7 +1,9 @@
 import '../database/app_database.dart';
+import '../models/category_model.dart';
 import '../models/financial_transaction_model.dart';
 import '../models/transaction_history_item.dart';
 import '../utils/money_utils.dart';
+import 'budget_service.dart';
 
 class TransactionService {
   TransactionService({AppDatabase? database})
@@ -11,6 +13,7 @@ class TransactionService {
 
   Future<int> insertTransaction(FinancialTransactionModel transaction) async {
     _validateTransaction(transaction);
+    await _validateRelatedItem(transaction);
 
     final db = await _database.database;
     return db.transaction((txn) async {
@@ -27,7 +30,7 @@ class TransactionService {
 
       final categoryRows = await txn.query(
         'categories',
-        columns: ['id'],
+        columns: ['id', 'type'],
         where: 'id = ?',
         whereArgs: [transaction.categoryId],
         limit: 1,
@@ -35,12 +38,11 @@ class TransactionService {
       if (categoryRows.isEmpty) {
         throw StateError('Category ${transaction.categoryId} does not exist.');
       }
+      _validateCategoryScope(transaction, categoryRows.first['type'] as String);
 
       final currentBalance =
           (accountRows.first['current_balance'] as num).toDouble();
-      final delta = transaction.type == 'income'
-          ? transaction.amount
-          : -transaction.amount;
+      final delta = _balanceDelta(transaction);
       await txn.update(
         'accounts',
         {'current_balance': currentBalance + delta},
@@ -143,6 +145,8 @@ SELECT
   t.amount_in_base_currency,
   t.account_id,
   t.category_id,
+  t.related_type,
+  t.related_id,
   t.date,
   t.comment,
   t.created_at,
@@ -210,6 +214,7 @@ $limitClause
       throw ArgumentError('Transaction id is required for update.');
     }
     _validateTransaction(transaction);
+    await _validateRelatedItem(transaction);
 
     final db = await _database.database;
     return db.transaction((txn) async {
@@ -237,7 +242,7 @@ $limitClause
 
       final categoryRows = await txn.query(
         'categories',
-        columns: ['id'],
+        columns: ['id', 'type'],
         where: 'id = ?',
         whereArgs: [transaction.categoryId],
         limit: 1,
@@ -245,6 +250,7 @@ $limitClause
       if (categoryRows.isEmpty) {
         throw StateError('Category ${transaction.categoryId} does not exist.');
       }
+      _validateCategoryScope(transaction, categoryRows.first['type'] as String);
 
       await _applyBalanceDelta(
         txn,
@@ -305,9 +311,11 @@ $limitClause
   }
 
   void _validateTransaction(FinancialTransactionModel transaction) {
-    if (transaction.type != 'income' && transaction.type != 'expense') {
+    if (transaction.type != 'income' &&
+        transaction.type != 'expense' &&
+        transaction.type != 'savings') {
       throw ArgumentError(
-        'Financial transaction type must be income or expense.',
+        'Financial transaction type must be income, expense or savings.',
       );
     }
     if (transaction.amount <= 0) {
@@ -327,12 +335,70 @@ $limitClause
         transaction.exchangeRate! <= 0) {
       throw ArgumentError('Exchange rate must be greater than zero.');
     }
+    final relatedType = transaction.relatedType;
+    if (relatedType != null &&
+        !TransactionRelatedType.values.contains(relatedType)) {
+      throw ArgumentError('Related type is not valid.');
+    }
+    if ((relatedType == null) != (transaction.relatedId == null)) {
+      throw ArgumentError('Related type and id must be saved together.');
+    }
   }
 
   double _balanceDelta(FinancialTransactionModel transaction) {
     return transaction.type == 'income'
         ? transaction.amount
         : -transaction.amount;
+  }
+
+  void _validateCategoryScope(
+    FinancialTransactionModel transaction,
+    String categoryType,
+  ) {
+    final systemComment = transaction.comment ?? '';
+    final isSystemMovement = categoryType == CategoryScope.system ||
+        systemComment.startsWith('Transferencia #') ||
+        systemComment.startsWith('Ajuste Manual');
+    if (isSystemMovement) return;
+
+    final expectedScope = switch (transaction.type) {
+      'expense' => CategoryScope.expense,
+      'income' => CategoryScope.income,
+      'savings' => CategoryScope.savings,
+      _ => '',
+    };
+    if (categoryType != expectedScope) {
+      throw ArgumentError('Category type does not match transaction type.');
+    }
+  }
+
+  Future<void> _validateRelatedItem(
+    FinancialTransactionModel transaction,
+  ) async {
+    final relatedType = transaction.relatedType;
+    final relatedId = transaction.relatedId;
+    if (relatedType == null || relatedId == null) return;
+
+    if (relatedType == TransactionRelatedType.budget &&
+        transaction.type != 'expense') {
+      throw ArgumentError('Only expenses can be related to budgets.');
+    }
+    if (relatedType == TransactionRelatedType.savings &&
+        transaction.type != 'savings') {
+      throw ArgumentError('Only savings movements can be related to savings.');
+    }
+
+    final options = await BudgetService(database: _database).getRelatedOptions(
+      categoryId: transaction.categoryId,
+      date: DateTime.parse(transaction.date),
+      operationType: transaction.type,
+    );
+    final valid = options.any(
+      (option) => option.type == relatedType && option.id == relatedId,
+    );
+    if (!valid) {
+      throw ArgumentError('Related item is not compatible with this movement.');
+    }
   }
 
   Future<void> _applyBalanceDelta(

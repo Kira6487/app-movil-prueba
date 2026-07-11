@@ -1,4 +1,5 @@
 import '../database/app_database.dart';
+import '../models/category_model.dart';
 import '../models/quick_action_model.dart';
 
 class QuickActionService {
@@ -21,6 +22,7 @@ class QuickActionService {
 
   Future<int> insertQuickAction(QuickActionModel quickAction) async {
     _validateQuickAction(quickAction);
+    await _validateExpenseCategory(quickAction.categoryId);
     final db = await _database.database;
     return db.insert('quick_actions', quickAction.toMap()..remove('id'));
   }
@@ -32,6 +34,7 @@ class QuickActionService {
     }
 
     _validateQuickAction(quickAction);
+    await _validateExpenseCategory(quickAction.categoryId);
     final db = await _database.database;
     return db.update('quick_actions', quickAction.toMap()..remove('id'),
         where: 'id = ?', whereArgs: [id]);
@@ -57,6 +60,23 @@ class QuickActionService {
     }
     if (quickAction.currency != 'SOL' && quickAction.currency != 'USD') {
       throw ArgumentError('Currency must be SOL or USD.');
+    }
+  }
+
+  Future<void> _validateExpenseCategory(int? categoryId) async {
+    if (categoryId == null) return;
+    final db = await _database.database;
+    final rows = await db.query(
+      'categories',
+      columns: ['type', 'is_active'],
+      where: 'id = ?',
+      whereArgs: [categoryId],
+      limit: 1,
+    );
+    if (rows.isEmpty ||
+        rows.first['type'] != CategoryScope.expense ||
+        rows.first['is_active'] != 1) {
+      throw ArgumentError('Quick actions require an active expense category.');
     }
   }
 }

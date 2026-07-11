@@ -33,12 +33,12 @@ class TransferService {
       final fromCategoryId = await _getOrCreateCategory(
         txn,
         name: 'Transferencia enviada',
-        type: 'expense',
+        type: 'system',
       );
       final toCategoryId = await _getOrCreateCategory(
         txn,
         name: 'Transferencia recibida',
-        type: 'income',
+        type: 'system',
       );
       final transferId = await txn.insert(
         'transfers',
@@ -148,8 +148,8 @@ class TransferService {
     final rows = await txn.query(
       'categories',
       columns: ['id'],
-      where: 'name = ? AND type = ?',
-      whereArgs: [name, type],
+      where: 'name = ?',
+      whereArgs: [name],
       limit: 1,
     );
     if (rows.isNotEmpty) return rows.first['id'] as int;
@@ -159,7 +159,10 @@ class TransferService {
       'type': type,
       'icon': 'transfer',
       'color': '#005FD1',
-      'is_active': 1,
+      'icon_key': 'transfer',
+      'color_hex': '#005FD1',
+      'sort_order': 0,
+      'is_active': 0,
       'created_at': DateTime.now().toIso8601String(),
     });
   }

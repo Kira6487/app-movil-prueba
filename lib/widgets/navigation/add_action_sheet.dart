@@ -295,13 +295,7 @@ class _AddActionSheetState extends State<AddActionSheet> {
                     icon: Icons.savings_outlined,
                     title: 'Ahorro',
                     color: AppColors.purple,
-                    onTap: () => _openPlaceholder(
-                      context,
-                      title: 'Ahorro',
-                      description: 'Accion informativa en esta fase.',
-                      icon: Icons.savings_outlined,
-                      color: AppColors.purple,
-                    ),
+                    onTap: () => _openSavings(context),
                   ),
                 ],
               );
@@ -317,12 +311,10 @@ class _AddActionSheetState extends State<AddActionSheet> {
       _amountController.text = _formatNumber(action.amount);
       _currency = action.currency;
       _commentController.text = action.comment ?? action.name;
-      _selectedAccount =
-          _findById(data.accounts, action.accountId) ??
+      _selectedAccount = _findById(data.accounts, action.accountId) ??
           _selectedAccount ??
           data.accounts.first;
-      _selectedCategory =
-          _findById(data.categories, action.categoryId) ??
+      _selectedCategory = _findById(data.categories, action.categoryId) ??
           _selectedCategory ??
           data.categories.first;
     });
@@ -373,6 +365,16 @@ class _AddActionSheetState extends State<AddActionSheet> {
     navigator.push(
       MaterialPageRoute<void>(
         builder: (_) => const TransactionFormScreen(type: 'income'),
+      ),
+    );
+  }
+
+  void _openSavings(BuildContext context) {
+    final navigator = Navigator.of(context);
+    navigator.pop();
+    navigator.push(
+      MaterialPageRoute<void>(
+        builder: (_) => const TransactionFormScreen(type: 'savings'),
       ),
     );
   }

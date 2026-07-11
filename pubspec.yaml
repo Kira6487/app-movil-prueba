@@ -1,7 +1,7 @@
 name: finanzas_personales
 description: Aplicacion movil demo offline para control financiero personal.
 publish_to: "none"
-version: 0.1.3+4
+version: 0.1.4+5
 
 environment:
   sdk: ">=3.4.0 <4.0.0"

@@ -1,7 +1,11 @@
 ﻿import 'package:finanzas_personales/app.dart';
 import 'package:finanzas_personales/database/app_database.dart';
+import 'package:finanzas_personales/models/account_model.dart';
+import 'package:finanzas_personales/screens/accounts/account_detail_screen.dart';
+import 'package:finanzas_personales/screens/accounts/account_form_screen.dart';
 import 'package:finanzas_personales/screens/reports/reports_screen.dart';
 import 'package:finanzas_personales/screens/transactions/transaction_form_screen.dart';
+import 'package:finanzas_personales/services/account_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
@@ -97,5 +101,47 @@ void main() {
 
     expect(tester.takeException(), isNull);
     expect(find.text('Reporte por categor\u00EDa'), findsOneWidget);
+  });
+
+  testWidgets('eliminar cuenta aparece en editar y no en detalle',
+      (tester) async {
+    const account = AccountModel(
+      id: 99,
+      name: 'Cuenta editable',
+      accountType: 'ahorros',
+      currency: 'SOL',
+      initialBalance: 0,
+      currentBalance: 0,
+      createdAt: '2026-07-01T00:00:00.000',
+    );
+
+    await tester.pumpWidget(
+      const MaterialApp(home: AccountFormScreen(initial: account)),
+    );
+    await tester.pump();
+    expect(find.text('Eliminar cuenta'), findsOneWidget);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    final seededAccount = (await tester.runAsync<AccountModel>(
+      () async {
+        await AppDatabase.instance.initialize();
+        await Future<void>.delayed(const Duration(milliseconds: 100));
+        return (await AccountService().getAllAccounts()).first;
+      },
+    ))!;
+    await tester.pumpWidget(
+      MaterialApp(home: AccountDetailScreen(accountId: seededAccount.id!)),
+    );
+    await tester.pump();
+    await tester.runAsync(
+      () async => Future<void>.delayed(const Duration(milliseconds: 300)),
+    );
+    await tester.pump();
+
+    expect(find.text('Eliminar cuenta'), findsNothing);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.runAsync(AppDatabase.instance.close);
+    await tester.pump();
   });
 }

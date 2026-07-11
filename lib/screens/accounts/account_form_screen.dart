@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../models/account_model.dart';
 import '../../providers/transaction_change_notifier.dart';
 import '../../services/account_service.dart';
+import '../../theme/app_colors.dart';
 import '../../utils/date_utils.dart';
 import '../../widgets/buttons/app_primary_button.dart';
 import '../../widgets/buttons/app_secondary_button.dart';
@@ -190,9 +191,8 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
                     Expanded(
                       child: AppSecondaryButton(
                         label: 'Cancelar',
-                        onPressed: _saving
-                            ? null
-                            : () => Navigator.of(context).pop(),
+                        onPressed:
+                            _saving ? null : () => Navigator.of(context).pop(),
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -207,12 +207,88 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
                     ),
                   ],
                 ),
+                if (_isEditing && account != null) ...[
+                  const SizedBox(height: 24),
+                  const Divider(),
+                  const SizedBox(height: 12),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      'Zona de peligro',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            color: AppColors.red,
+                            fontWeight: FontWeight.w700,
+                          ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Solo se puede eliminar una cuenta sin movimientos. Si tiene historial, Duna la bloqueará para preservar trazabilidad.',
+                  ),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed:
+                          _saving ? null : () => _confirmDelete(account.id!),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.red,
+                        side: const BorderSide(color: AppColors.red),
+                      ),
+                      icon: const Icon(Icons.delete_outline),
+                      label: const Text('Eliminar cuenta'),
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
         ),
       ],
     );
+  }
+
+  Future<void> _confirmDelete(int accountId) async {
+    final movements = await AccountService().countAccountMovements(accountId);
+    if (!mounted) return;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Eliminar cuenta'),
+        content: Text(
+          movements > 0
+              ? 'Esta cuenta tiene $movements movimientos relacionados. No se eliminará para preservar el historial.'
+              : 'Esta acción eliminará la cuenta porque no tiene movimientos asociados.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed:
+                movements > 0 ? null : () => Navigator.of(context).pop(true),
+            child: const Text('Eliminar'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+
+    setState(() => _saving = true);
+    try {
+      await AccountService().deleteAccount(accountId);
+      TransactionChangeNotifier.notifyChanged();
+      if (!mounted) return;
+      Navigator.of(context).popUntil((route) => route.isFirst);
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('No se pudo eliminar: $error')),
+      );
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
   }
 
   Future<void> _save() async {

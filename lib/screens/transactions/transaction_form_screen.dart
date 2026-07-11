@@ -4,8 +4,10 @@ import '../../models/account_model.dart';
 import '../../models/category_model.dart';
 import '../../models/financial_transaction_model.dart';
 import '../../models/quick_action_model.dart';
+import '../../models/related_item_option.dart';
 import '../../providers/transaction_change_notifier.dart';
 import '../../services/account_service.dart';
+import '../../services/budget_service.dart';
 import '../../services/category_service.dart';
 import '../../services/quick_action_service.dart';
 import '../../services/transaction_service.dart';
@@ -53,11 +55,20 @@ class _TransactionFormScreenState extends State<TransactionFormScreen> {
   String _currency = 'SOL';
   AccountModel? _selectedAccount;
   CategoryModel? _selectedCategory;
+  RelatedItemOption? _selectedRelated;
+  List<RelatedItemOption> _relatedOptions = const [];
+  bool _loadingRelated = false;
   DateTime _selectedDate = DateTime.now();
   bool _saving = false;
 
   bool get _isExpense => widget.type == 'expense';
+  bool get _isSavings => widget.type == 'savings';
   bool get _isEditing => widget.initialTransaction != null;
+  String get _categoryScope => switch (widget.type) {
+        'income' => CategoryScope.income,
+        'savings' => CategoryScope.savings,
+        _ => CategoryScope.expense,
+      };
 
   @override
   void initState() {
@@ -90,9 +101,9 @@ class _TransactionFormScreenState extends State<TransactionFormScreen> {
 
   Future<_TransactionFormData> _loadData() async {
     final accounts = await AccountService().getAllAccounts();
-    final categories = (await CategoryService().getAllCategories())
-        .where((category) => category.type == widget.type)
-        .toList();
+    final categories = await CategoryService().getCategoriesByType(
+      _categoryScope,
+    );
     final quickActions = _isExpense && !widget.lockAccount
         ? await QuickActionService().getAllQuickActions()
         : <QuickActionModel>[];
@@ -111,6 +122,12 @@ class _TransactionFormScreenState extends State<TransactionFormScreen> {
       _selectedAccount = _findById(accounts, initialTransaction.accountId);
       _selectedCategory = _findById(categories, initialTransaction.categoryId);
     }
+    _relatedOptions = await _loadRelatedOptions();
+    final relatedType = initialTransaction?.relatedType;
+    final relatedId = initialTransaction?.relatedId;
+    if (relatedType != null && relatedId != null) {
+      _selectedRelated = _findRelated(_relatedOptions, relatedType, relatedId);
+    }
 
     return _TransactionFormData(
       accounts: accounts,
@@ -121,10 +138,10 @@ class _TransactionFormScreenState extends State<TransactionFormScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final title = _isEditing
-        ? (_isExpense ? 'Editar gasto' : 'Editar ingreso')
-        : (_isExpense ? 'Registrar gasto' : 'Registrar ingreso');
-    final color = _isExpense ? AppColors.red : AppColors.green;
+    final title = _title;
+    final color = _isExpense
+        ? AppColors.red
+        : (_isSavings ? AppColors.purple : AppColors.green);
 
     return AppScaffold(
       title: title,
@@ -133,7 +150,9 @@ class _TransactionFormScreenState extends State<TransactionFormScreen> {
           title: title,
           subtitle: _isExpense
               ? 'Guarda un gasto real y descuenta el saldo de la cuenta.'
-              : 'Guarda un ingreso real y suma el saldo de la cuenta.',
+              : (_isSavings
+                  ? 'Registra un ahorro real y relaciona su objetivo.'
+                  : 'Guarda un ingreso real y suma el saldo de la cuenta.'),
         ),
         FutureBuilder<_TransactionFormData>(
           future: _dataFuture,
@@ -258,6 +277,7 @@ class _TransactionFormScreenState extends State<TransactionFormScreen> {
                           prefixIcon: Icons.category_outlined,
                           onChanged: (value) {
                             setState(() => _selectedCategory = value);
+                            _refreshRelatedOptions();
                           },
                           validator: (value) =>
                               value == null ? 'Selecciona una categoria' : null,
@@ -276,6 +296,19 @@ class _TransactionFormScreenState extends State<TransactionFormScreen> {
                               ? 'Selecciona una fecha'
                               : null,
                         ),
+                        if (_isExpense || _isSavings) ...[
+                          const SizedBox(height: 14),
+                          _RelatedField(
+                            loading: _loadingRelated,
+                            options: _relatedOptions,
+                            value: _relatedOptions.contains(_selectedRelated)
+                                ? _selectedRelated
+                                : null,
+                            onChanged: (value) =>
+                                setState(() => _selectedRelated = value),
+                            required: _relatedOptions.isNotEmpty,
+                          ),
+                        ],
                         const SizedBox(height: 14),
                         AppTextInput(
                           label: 'Comentario opcional',
@@ -325,6 +358,7 @@ class _TransactionFormScreenState extends State<TransactionFormScreen> {
       _selectedAccount = _findById(data.accounts, action.accountId);
       _selectedCategory = _findById(data.categories, action.categoryId);
     });
+    _refreshRelatedOptions();
   }
 
   void _applyQuickAction(QuickActionModel? action) {
@@ -343,6 +377,7 @@ class _TransactionFormScreenState extends State<TransactionFormScreen> {
     );
     if (picked == null || !mounted) return;
     setState(() => _selectedDate = picked);
+    await _refreshRelatedOptions();
   }
 
   Future<void> _save(Color color) async {
@@ -367,6 +402,8 @@ class _TransactionFormScreenState extends State<TransactionFormScreen> {
         exchangeRate: exchangeRate,
         accountId: account.id!,
         categoryId: category.id!,
+        relatedType: _selectedRelated?.type,
+        relatedId: _selectedRelated?.id,
         date: AppDateUtils.dateOnlyIso(_selectedDate),
         comment: _commentController.text.trim().isEmpty
             ? null
@@ -386,7 +423,11 @@ class _TransactionFormScreenState extends State<TransactionFormScreen> {
           content: Text(
             _isEditing
                 ? 'Movimiento actualizado'
-                : (_isExpense ? 'Gasto registrado' : 'Ingreso registrado'),
+                : (_isExpense
+                    ? 'Gasto registrado'
+                    : (_isSavings
+                        ? 'Ahorro registrado'
+                        : 'Ingreso registrado')),
           ),
           backgroundColor: color,
         ),
@@ -420,6 +461,42 @@ class _TransactionFormScreenState extends State<TransactionFormScreen> {
     return null;
   }
 
+  String get _title {
+    if (_isEditing) {
+      if (_isSavings) return 'Editar ahorro';
+      return _isExpense ? 'Editar gasto' : 'Editar ingreso';
+    }
+    if (_isSavings) return 'Registrar ahorro';
+    return _isExpense ? 'Registrar gasto' : 'Registrar ingreso';
+  }
+
+  Future<List<RelatedItemOption>> _loadRelatedOptions() async {
+    final category = _selectedCategory;
+    if (category?.id == null || (!_isExpense && !_isSavings)) {
+      return const [];
+    }
+    return BudgetService().getRelatedOptions(
+      categoryId: category!.id!,
+      date: _selectedDate,
+      operationType: widget.type,
+    );
+  }
+
+  Future<void> _refreshRelatedOptions() async {
+    if (!_isExpense && !_isSavings) return;
+    setState(() => _loadingRelated = true);
+    final options = await _loadRelatedOptions();
+    if (!mounted) return;
+    setState(() {
+      _relatedOptions = options;
+      if (!_relatedOptions
+          .any((option) => option.key == _selectedRelated?.key)) {
+        _selectedRelated = null;
+      }
+      _loadingRelated = false;
+    });
+  }
+
   double? _parseNumber(String value) {
     return double.tryParse(value.trim().replaceAll(',', '.'));
   }
@@ -448,6 +525,63 @@ class _TransactionFormScreenState extends State<TransactionFormScreen> {
       if (itemId == id) return item;
     }
     return null;
+  }
+
+  RelatedItemOption? _findRelated(
+    List<RelatedItemOption> items,
+    String type,
+    int id,
+  ) {
+    for (final item in items) {
+      if (item.type == type && item.id == id) return item;
+    }
+    return null;
+  }
+}
+
+class _RelatedField extends StatelessWidget {
+  const _RelatedField({
+    required this.loading,
+    required this.options,
+    required this.value,
+    required this.onChanged,
+    required this.required,
+  });
+
+  final bool loading;
+  final List<RelatedItemOption> options;
+  final RelatedItemOption? value;
+  final ValueChanged<RelatedItemOption?> onChanged;
+  final bool required;
+
+  @override
+  Widget build(BuildContext context) {
+    if (loading) {
+      return const AppTextInput(
+        label: 'Relacionado',
+        enabled: false,
+        prefixIcon: Icons.link_outlined,
+        hintText: 'Buscando opciones compatibles...',
+      );
+    }
+    if (options.isEmpty) {
+      return const AppTextInput(
+        label: 'Relacionado',
+        enabled: false,
+        prefixIcon: Icons.link_off_outlined,
+        hintText: 'Sin relación disponible',
+      );
+    }
+    return AppDropdownField<RelatedItemOption>(
+      label: 'Relacionado',
+      items: options,
+      itemLabel: (option) => '${option.name} · ${option.subtitle}',
+      value: value,
+      prefixIcon: Icons.link_outlined,
+      onChanged: onChanged,
+      validator: (option) =>
+          required && option == null ? 'Selecciona una relación' : null,
+    );
   }
 }
 

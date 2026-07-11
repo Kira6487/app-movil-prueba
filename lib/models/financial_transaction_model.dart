@@ -8,6 +8,8 @@ class FinancialTransactionModel {
     this.amountInBaseCurrency,
     required this.accountId,
     required this.categoryId,
+    this.relatedType,
+    this.relatedId,
     required this.date,
     this.comment,
     required this.createdAt,
@@ -21,6 +23,8 @@ class FinancialTransactionModel {
   final double? amountInBaseCurrency;
   final int accountId;
   final int categoryId;
+  final String? relatedType;
+  final int? relatedId;
   final String date;
   final String? comment;
   final String createdAt;
@@ -36,6 +40,8 @@ class FinancialTransactionModel {
           (map['amount_in_base_currency'] as num?)?.toDouble(),
       accountId: map['account_id'] as int,
       categoryId: map['category_id'] as int,
+      relatedType: _readString(map, 'related_type'),
+      relatedId: (map['related_id'] as num?)?.toInt(),
       date: map['date'] as String,
       comment: map['comment'] as String?,
       createdAt: map['created_at'] as String,
@@ -52,6 +58,8 @@ class FinancialTransactionModel {
       'amount_in_base_currency': amountInBaseCurrency,
       'account_id': accountId,
       'category_id': categoryId,
+      'related_type': relatedType,
+      'related_id': relatedId,
       'date': date,
       'comment': comment,
       'created_at': createdAt,
@@ -67,6 +75,8 @@ class FinancialTransactionModel {
     double? amountInBaseCurrency,
     int? accountId,
     int? categoryId,
+    String? relatedType,
+    int? relatedId,
     String? date,
     String? comment,
     String? createdAt,
@@ -80,9 +90,25 @@ class FinancialTransactionModel {
       amountInBaseCurrency: amountInBaseCurrency ?? this.amountInBaseCurrency,
       accountId: accountId ?? this.accountId,
       categoryId: categoryId ?? this.categoryId,
+      relatedType: relatedType ?? this.relatedType,
+      relatedId: relatedId ?? this.relatedId,
       date: date ?? this.date,
       comment: comment ?? this.comment,
       createdAt: createdAt ?? this.createdAt,
     );
   }
+
+  static String? _readString(Map<String, Object?> map, String key) {
+    if (!map.containsKey(key)) return null;
+    return map[key] as String?;
+  }
+}
+
+class TransactionRelatedType {
+  const TransactionRelatedType._();
+
+  static const budget = 'budget';
+  static const savings = 'savings';
+
+  static const values = [budget, savings];
 }

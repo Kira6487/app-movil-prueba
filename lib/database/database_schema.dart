@@ -2,7 +2,7 @@ class DatabaseSchema {
   const DatabaseSchema._();
 
   static const databaseName = 'finanzas_personales.db';
-  static const version = 2;
+  static const version = 3;
 
   static const createBudgets = '''
 CREATE TABLE IF NOT EXISTS budgets (
@@ -36,6 +36,9 @@ CREATE TABLE categories (
   type TEXT NOT NULL,
   icon TEXT,
   color TEXT,
+  icon_key TEXT,
+  color_hex TEXT,
+  sort_order INTEGER NOT NULL DEFAULT 0,
   is_active INTEGER NOT NULL DEFAULT 1,
   created_at TEXT NOT NULL
 )
@@ -64,6 +67,8 @@ CREATE TABLE financial_transactions (
   amount_in_base_currency REAL,
   account_id INTEGER NOT NULL,
   category_id INTEGER NOT NULL,
+  related_type TEXT,
+  related_id INTEGER,
   date TEXT NOT NULL,
   comment TEXT,
   created_at TEXT NOT NULL,
@@ -166,6 +171,7 @@ CREATE TABLE credit_card_installments (
 CREATE TABLE savings_goals (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   name TEXT NOT NULL,
+  category_id INTEGER NOT NULL,
   target_amount REAL NOT NULL,
   current_amount REAL NOT NULL DEFAULT 0,
   currency TEXT NOT NULL,
@@ -173,6 +179,7 @@ CREATE TABLE savings_goals (
   deadline TEXT,
   is_active INTEGER NOT NULL DEFAULT 1,
   created_at TEXT NOT NULL
+  ,FOREIGN KEY(category_id) REFERENCES categories(id)
 )
 ''',
     '''
