@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 
 import '../../models/account_model.dart';
 import '../../models/category_model.dart';
+import '../../models/budget_rule_model.dart';
 import '../../models/quick_action_model.dart';
 import '../../providers/transaction_change_notifier.dart';
 import '../../services/account_service.dart';
 import '../../services/category_service.dart';
+import '../../services/budget_service.dart';
 import '../../services/quick_action_service.dart';
 import '../../utils/date_utils.dart';
 import '../../widgets/buttons/app_primary_button.dart';
@@ -41,6 +43,7 @@ class _QuickActionFormScreenState extends State<QuickActionFormScreen> {
   bool _isActive = true;
   AccountModel? _account;
   CategoryModel? _category;
+  BudgetRuleModel? _budget;
   bool _saving = false;
 
   bool get _isEditing => widget.initial != null;
@@ -76,12 +79,22 @@ class _QuickActionFormScreenState extends State<QuickActionFormScreen> {
     final categories = (await CategoryService().getAllCategories())
         .where((category) => category.type == 'expense')
         .toList();
+    final budgets = (await BudgetService().getAllBudgetRules())
+        .where((item) => item.budgetType != BudgetType.savings)
+        .toList();
     final initial = widget.initial;
     if (initial != null) {
       _account = _findById(accounts, initial.accountId);
       _category = _findById(categories, initial.categoryId);
+      for (final item in budgets) {
+        if (item.id == initial.budgetItemId) _budget = item;
+      }
     }
-    return _QuickActionFormData(accounts: accounts, categories: categories);
+    return _QuickActionFormData(
+      accounts: accounts,
+      categories: categories,
+      budgets: budgets,
+    );
   }
 
   @override
@@ -156,10 +169,24 @@ class _QuickActionFormScreenState extends State<QuickActionFormScreen> {
                       itemLabel: (category) => category.name,
                       value: _category,
                       prefixIcon: Icons.category_outlined,
-                      onChanged: (value) => setState(() => _category = value),
+                      onChanged: (value) => setState(() {
+                        _category = value;
+                        if (_budget?.categoryId != value?.id) _budget = null;
+                      }),
                       validator: (value) => value == null
                           ? 'Selecciona una categoría de gasto'
                           : null,
+                    ),
+                    const SizedBox(height: 14),
+                    AppDropdownField<BudgetRuleModel>(
+                      label: 'Contrapartida',
+                      items: data.budgets
+                          .where((item) => item.categoryId == _category?.id)
+                          .toList(),
+                      itemLabel: (item) => item.name,
+                      value: _budget,
+                      prefixIcon: Icons.link_outlined,
+                      onChanged: (value) => setState(() => _budget = value),
                     ),
                     const SizedBox(height: 14),
                     AppTextInput(
@@ -237,6 +264,7 @@ class _QuickActionFormScreenState extends State<QuickActionFormScreen> {
         currency: _currency,
         categoryId: _category?.id,
         accountId: _account?.id,
+        budgetItemId: _budget?.id,
         comment: _commentController.text.trim().isEmpty
             ? null
             : _commentController.text.trim(),
@@ -297,8 +325,10 @@ class _QuickActionFormData {
   const _QuickActionFormData({
     required this.accounts,
     required this.categories,
+    required this.budgets,
   });
 
   final List<AccountModel> accounts;
   final List<CategoryModel> categories;
+  final List<BudgetRuleModel> budgets;
 }

@@ -250,30 +250,41 @@ ORDER BY b.created_at DESC, b.id DESC
   }) async {
     final db = await _database.database;
     final rows = await db.rawQuery('''
-SELECT t.related_type,
-       t.related_id,
-       SUM(COALESCE(t.amount_in_base_currency, t.amount)) AS total
-FROM financial_transactions t
-INNER JOIN accounts a ON a.id = t.account_id
-WHERE t.related_type IS NOT NULL
-  AND t.related_id IS NOT NULL
-  AND (
-    (t.related_type = 'budget' AND t.type = 'expense')
-    OR (t.related_type = 'savings' AND t.type = 'savings')
-  )
-  AND a.is_hidden_from_budget = 0
-  AND t.date >= ? AND t.date < ?
-  AND (t.comment IS NULL OR (
-    t.comment NOT LIKE 'Transferencia #%'
-    AND t.comment NOT LIKE 'Ajuste Manual%'
-  ))
-GROUP BY t.related_type, t.related_id
-''', [start.toIso8601String(), endExclusive.toIso8601String()]);
+SELECT relation_type, relation_id, SUM(total) AS total
+FROM (
+  SELECT 'budget' AS relation_type, e.budget_item_id AS relation_id,
+         SUM(CASE WHEN l.debit > 0 THEN l.base_amount ELSE 0 END) AS total
+  FROM journal_entries e
+  JOIN journal_lines l ON l.journal_entry_id = e.id
+  JOIN ledger_accounts la ON la.id = l.ledger_account_id
+  WHERE e.status = 'posted' AND e.budget_item_id IS NOT NULL
+    AND la.account_type = 'expense'
+    AND e.description NOT LIKE 'Ajuste Manual%'
+    AND e.date >= ? AND e.date < ?
+  GROUP BY e.budget_item_id
+  UNION ALL
+  SELECT 'savings' AS relation_type, e.savings_item_id AS relation_id,
+         SUM(CASE WHEN l.debit > 0 THEN l.base_amount ELSE -l.base_amount END) AS total
+  FROM journal_entries e
+  JOIN journal_lines l ON l.journal_entry_id = e.id
+  JOIN ledger_accounts la ON la.id = l.ledger_account_id
+  WHERE e.status = 'posted' AND e.savings_item_id IS NOT NULL
+    AND (la.reference_type = 'wallet' OR la.code = 'SYS-SAVINGS')
+    AND e.date >= ? AND e.date < ?
+  GROUP BY e.savings_item_id
+)
+GROUP BY relation_type, relation_id
+''', [
+      start.toIso8601String(),
+      endExclusive.toIso8601String(),
+      start.toIso8601String(),
+      endExclusive.toIso8601String(),
+    ]);
     return {
       for (final row in rows)
         _relatedKey(
-          row['related_type'] as String,
-          (row['related_id'] as num).toInt(),
+          row['relation_type'] as String,
+          (row['relation_id'] as num).toInt(),
         ): ((row['total'] as num?) ?? 0).toDouble(),
     };
   }

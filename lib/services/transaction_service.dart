@@ -1,9 +1,13 @@
+import 'package:sqflite/sqflite.dart';
+
 import '../database/app_database.dart';
 import '../models/category_model.dart';
 import '../models/financial_transaction_model.dart';
 import '../models/transaction_history_item.dart';
+import '../models/ledger_models.dart';
 import '../utils/money_utils.dart';
 import 'budget_service.dart';
+import 'ledger_service.dart';
 
 class TransactionService {
   TransactionService({AppDatabase? database})
@@ -43,13 +47,6 @@ class TransactionService {
       final currentBalance =
           (accountRows.first['current_balance'] as num).toDouble();
       final delta = _balanceDelta(transaction);
-      await txn.update(
-        'accounts',
-        {'current_balance': currentBalance + delta},
-        where: 'id = ?',
-        whereArgs: [transaction.accountId],
-      );
-
       final amountInBaseCurrency = transaction.amountInBaseCurrency ??
           MoneyUtils.amountInBaseCurrency(
             amount: transaction.amount,
@@ -62,7 +59,19 @@ class TransactionService {
           .copyWith(amountInBaseCurrency: amountInBaseCurrency)
           .toMap()
         ..remove('id');
-      return txn.insert('financial_transactions', data);
+      final transactionId = await txn.insert('financial_transactions', data);
+      final journalId = await _postLedgerEntry(
+        txn,
+        transaction.copyWith(amountInBaseCurrency: amountInBaseCurrency),
+        sourceType: 'transaction',
+        sourceId: transactionId,
+      );
+      await txn.update(
+          'financial_transactions', {'journal_entry_id': journalId},
+          where: 'id = ?', whereArgs: [transactionId]);
+      await txn.update('accounts', {'current_balance': currentBalance + delta},
+          where: 'id = ?', whereArgs: [transaction.accountId]);
+      return transactionId;
     });
   }
 
@@ -228,6 +237,7 @@ $limitClause
         throw StateError('Transaction $id does not exist.');
       }
       final oldTransaction = FinancialTransactionModel.fromMap(oldRows.first);
+      final oldJournalId = oldRows.first['journal_entry_id'] as int?;
 
       final accountRows = await txn.query(
         'accounts',
@@ -275,12 +285,25 @@ $limitClause
           .copyWith(amountInBaseCurrency: amountInBaseCurrency)
           .toMap()
         ..remove('id');
-      return txn.update(
+      final updated = await txn.update(
         'financial_transactions',
         data,
         where: 'id = ?',
         whereArgs: [id],
       );
+      if (oldJournalId != null) {
+        await txn.update('journal_entries', {'status': 'void'},
+            where: 'id = ?', whereArgs: [oldJournalId]);
+      }
+      final journalId = await _postLedgerEntry(
+        txn,
+        transaction.copyWith(amountInBaseCurrency: amountInBaseCurrency),
+        sourceType: 'transaction_revision',
+      );
+      await txn.update(
+          'financial_transactions', {'journal_entry_id': journalId},
+          where: 'id = ?', whereArgs: [id]);
+      return updated;
     });
   }
 
@@ -297,11 +320,16 @@ $limitClause
         return 0;
       }
       final transaction = FinancialTransactionModel.fromMap(rows.first);
+      final journalId = rows.first['journal_entry_id'] as int?;
       await _applyBalanceDelta(
         txn,
         transaction.accountId,
         -_balanceDelta(transaction),
       );
+      if (journalId != null) {
+        await txn.update('journal_entries', {'status': 'void'},
+            where: 'id = ?', whereArgs: [journalId]);
+      }
       return txn.delete(
         'financial_transactions',
         where: 'id = ?',
@@ -424,4 +452,58 @@ $limitClause
       whereArgs: [accountId],
     );
   }
+
+  Future<int> _postLedgerEntry(
+    DatabaseExecutor txn,
+    FinancialTransactionModel transaction, {
+    required String sourceType,
+    int? sourceId,
+  }) async {
+    final assetId = await LedgerService.referenceAccountId(
+        txn, 'account', transaction.accountId);
+    final counterpartId = transaction.type == 'savings'
+        ? await LedgerService.codeAccountId(txn, 'SYS-SAVINGS')
+        : await LedgerService.referenceAccountId(
+            txn, 'category', transaction.categoryId);
+    final assetDebit = transaction.type == 'income';
+    final base = transaction.amountInBaseCurrency ?? transaction.amount;
+    return LedgerService.postEntryInTransaction(
+      txn,
+      JournalEntryDraft(
+        date: transaction.date,
+        description: transaction.comment ?? _description(transaction.type),
+        sourceType: sourceType,
+        sourceId: sourceId,
+        budgetItemId: transaction.relatedType == TransactionRelatedType.budget
+            ? transaction.relatedId
+            : null,
+        savingsItemId: transaction.relatedType == TransactionRelatedType.savings
+            ? transaction.relatedId
+            : null,
+        createdAt: transaction.createdAt,
+        lines: [
+          JournalLineDraft(
+            ledgerAccountId: assetDebit ? assetId : counterpartId,
+            debit: transaction.amount,
+            currency: transaction.currency,
+            exchangeRate: transaction.exchangeRate,
+            baseAmount: base,
+          ),
+          JournalLineDraft(
+            ledgerAccountId: assetDebit ? counterpartId : assetId,
+            credit: transaction.amount,
+            currency: transaction.currency,
+            exchangeRate: transaction.exchangeRate,
+            baseAmount: base,
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _description(String type) => switch (type) {
+        'expense' => 'Gasto',
+        'income' => 'Ingreso',
+        _ => 'Ahorro',
+      };
 }

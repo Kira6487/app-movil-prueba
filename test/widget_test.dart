@@ -1,4 +1,4 @@
-﻿import 'package:finanzas_personales/app.dart';
+import 'package:finanzas_personales/app.dart';
 import 'package:finanzas_personales/database/app_database.dart';
 import 'package:finanzas_personales/models/account_model.dart';
 import 'package:finanzas_personales/screens/accounts/account_detail_screen.dart';
@@ -9,6 +9,8 @@ import 'package:finanzas_personales/services/account_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+
+import 'test_fixtures.dart';
 
 void main() {
   setUpAll(() {
@@ -125,6 +127,7 @@ void main() {
     final seededAccount = (await tester.runAsync<AccountModel>(
       () async {
         await AppDatabase.instance.initialize();
+        await installTestFixtures(AppDatabase.instance);
         await Future<void>.delayed(const Duration(milliseconds: 100));
         return (await AccountService().getAllAccounts()).first;
       },

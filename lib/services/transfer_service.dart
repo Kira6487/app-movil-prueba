@@ -1,6 +1,8 @@
 import '../database/app_database.dart';
 import '../models/transfer_model.dart';
+import '../models/ledger_models.dart';
 import '../utils/money_utils.dart';
+import 'ledger_service.dart';
 
 class TransferService {
   TransferService({AppDatabase? database})
@@ -29,6 +31,10 @@ class TransferService {
       if (fromRows.isEmpty || toRows.isEmpty) {
         throw StateError('Transfer accounts must exist.');
       }
+      await _validateWalletEndpoint(
+          txn, transfer.fromWalletId, transfer.fromAccountId, 'origin');
+      await _validateWalletEndpoint(
+          txn, transfer.toWalletId, transfer.toAccountId, 'destination');
 
       final fromCategoryId = await _getOrCreateCategory(
         txn,
@@ -52,18 +58,73 @@ class TransferService {
 
       final fromBalance = (fromRows.first['current_balance'] as num).toDouble();
       final toBalance = (toRows.first['current_balance'] as num).toDouble();
-      await txn.update(
-        'accounts',
-        {'current_balance': fromBalance - transfer.amountFrom},
-        where: 'id = ?',
-        whereArgs: [transfer.fromAccountId],
+      if (transfer.fromWalletId == null) {
+        await txn.update(
+            'accounts', {'current_balance': fromBalance - transfer.amountFrom},
+            where: 'id = ?', whereArgs: [transfer.fromAccountId]);
+      }
+      if (transfer.toWalletId == null) {
+        await txn.update(
+            'accounts', {'current_balance': toBalance + transfer.amountTo},
+            where: 'id = ?', whereArgs: [transfer.toAccountId]);
+      }
+
+      final fromLedgerId = transfer.fromWalletId == null
+          ? await LedgerService.referenceAccountId(
+              txn, 'account', transfer.fromAccountId)
+          : await LedgerService.referenceAccountId(
+              txn, 'wallet', transfer.fromWalletId!);
+      final toLedgerId = transfer.toWalletId == null
+          ? await LedgerService.referenceAccountId(
+              txn, 'account', transfer.toAccountId)
+          : await LedgerService.referenceAccountId(
+              txn, 'wallet', transfer.toWalletId!);
+      final effectiveRate = transfer.exchangeRate ?? 1;
+      final fromBase = transfer.currencyFrom == 'SOL'
+          ? transfer.amountFrom
+          : transfer.amountFrom * effectiveRate;
+      final toBase = transfer.currencyTo == 'SOL'
+          ? transfer.amountTo
+          : transfer.amountTo * effectiveRate;
+      final lines = <JournalLineDraft>[
+        JournalLineDraft(
+            ledgerAccountId: toLedgerId,
+            debit: transfer.amountTo,
+            currency: transfer.currencyTo,
+            exchangeRate: transfer.exchangeRate,
+            baseAmount: toBase),
+        JournalLineDraft(
+            ledgerAccountId: fromLedgerId,
+            credit: transfer.amountFrom,
+            currency: transfer.currencyFrom,
+            exchangeRate: transfer.exchangeRate,
+            baseAmount: fromBase),
+      ];
+      final difference = fromBase - toBase;
+      if (difference.abs() >= LedgerService.tolerance) {
+        final fxId = await LedgerService.codeAccountId(txn, 'SYS-FX');
+        lines.add(JournalLineDraft(
+          ledgerAccountId: fxId,
+          debit: difference > 0 ? difference : 0,
+          credit: difference < 0 ? -difference : 0,
+          currency: 'SOL',
+          baseAmount: difference.abs(),
+        ));
+      }
+      final journalId = await LedgerService.postEntryInTransaction(
+        txn,
+        JournalEntryDraft(
+          date: transfer.date,
+          description: transferComment,
+          sourceType: 'transfer',
+          sourceId: transferId,
+          savingsItemId: transfer.savingsItemId,
+          createdAt: transfer.createdAt,
+          lines: lines,
+        ),
       );
-      await txn.update(
-        'accounts',
-        {'current_balance': toBalance + transfer.amountTo},
-        where: 'id = ?',
-        whereArgs: [transfer.toAccountId],
-      );
+      await txn.update('transfers', {'journal_entry_id': journalId},
+          where: 'id = ?', whereArgs: [transferId]);
 
       await txn.insert('financial_transactions', {
         'type': 'expense',
@@ -122,7 +183,8 @@ class TransferService {
   }
 
   void _validateTransfer(TransferModel transfer) {
-    if (transfer.fromAccountId == transfer.toAccountId) {
+    if (transfer.fromAccountId == transfer.toAccountId &&
+        transfer.fromWalletId == transfer.toWalletId) {
       throw ArgumentError('Transfer accounts must be different.');
     }
     if (transfer.amountFrom <= 0 || transfer.amountTo <= 0) {
@@ -165,5 +227,24 @@ class TransferService {
       'is_active': 0,
       'created_at': DateTime.now().toIso8601String(),
     });
+  }
+
+  Future<void> _validateWalletEndpoint(
+    dynamic txn,
+    int? walletId,
+    int accountId,
+    String label,
+  ) async {
+    if (walletId == null) return;
+    final rows = await txn.query('wallets',
+        columns: ['account_id', 'is_active'],
+        where: 'id = ?',
+        whereArgs: [walletId],
+        limit: 1);
+    if (rows.isEmpty ||
+        rows.first['account_id'] != accountId ||
+        rows.first['is_active'] != 1) {
+      throw StateError('The $label wallet is not active for this account.');
+    }
   }
 }

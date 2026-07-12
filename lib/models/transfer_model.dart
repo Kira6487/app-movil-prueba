@@ -8,6 +8,9 @@ class TransferModel {
     required this.amountTo,
     required this.currencyTo,
     this.exchangeRate,
+    this.fromWalletId,
+    this.toWalletId,
+    this.savingsItemId,
     required this.date,
     this.comment,
     required this.createdAt,
@@ -21,6 +24,9 @@ class TransferModel {
   final double amountTo;
   final String currencyTo;
   final double? exchangeRate;
+  final int? fromWalletId;
+  final int? toWalletId;
+  final int? savingsItemId;
   final String date;
   final String? comment;
   final String createdAt;
@@ -35,6 +41,9 @@ class TransferModel {
       amountTo: (map['amount_to'] as num).toDouble(),
       currencyTo: map['currency_to'] as String,
       exchangeRate: (map['exchange_rate'] as num?)?.toDouble(),
+      fromWalletId: map['from_wallet_id'] as int?,
+      toWalletId: map['to_wallet_id'] as int?,
+      savingsItemId: map['savings_item_id'] as int?,
       date: map['date'] as String,
       comment: map['comment'] as String?,
       createdAt: map['created_at'] as String,
@@ -51,6 +60,9 @@ class TransferModel {
       'amount_to': amountTo,
       'currency_to': currencyTo,
       'exchange_rate': exchangeRate,
+      'from_wallet_id': fromWalletId,
+      'to_wallet_id': toWalletId,
+      'savings_item_id': savingsItemId,
       'date': date,
       'comment': comment,
       'created_at': createdAt,
@@ -66,6 +78,9 @@ class TransferModel {
     double? amountTo,
     String? currencyTo,
     double? exchangeRate,
+    int? fromWalletId,
+    int? toWalletId,
+    int? savingsItemId,
     String? date,
     String? comment,
     String? createdAt,
@@ -79,6 +94,9 @@ class TransferModel {
       amountTo: amountTo ?? this.amountTo,
       currencyTo: currencyTo ?? this.currencyTo,
       exchangeRate: exchangeRate ?? this.exchangeRate,
+      fromWalletId: fromWalletId ?? this.fromWalletId,
+      toWalletId: toWalletId ?? this.toWalletId,
+      savingsItemId: savingsItemId ?? this.savingsItemId,
       date: date ?? this.date,
       comment: comment ?? this.comment,
       createdAt: createdAt ?? this.createdAt,

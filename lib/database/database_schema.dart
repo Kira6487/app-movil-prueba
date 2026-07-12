@@ -2,7 +2,52 @@ class DatabaseSchema {
   const DatabaseSchema._();
 
   static const databaseName = 'finanzas_personales.db';
-  static const version = 3;
+  static const version = 4;
+
+  static const createLedgerAccounts = '''
+CREATE TABLE IF NOT EXISTS ledger_accounts (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  code TEXT NOT NULL UNIQUE,
+  name TEXT NOT NULL,
+  account_type TEXT NOT NULL,
+  parent_account_id INTEGER,
+  currency TEXT NOT NULL,
+  reference_type TEXT,
+  reference_id INTEGER,
+  is_active INTEGER NOT NULL DEFAULT 1,
+  FOREIGN KEY(parent_account_id) REFERENCES ledger_accounts(id)
+)
+''';
+
+  static const createJournalEntries = '''
+CREATE TABLE IF NOT EXISTS journal_entries (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  date TEXT NOT NULL,
+  description TEXT NOT NULL,
+  source_type TEXT NOT NULL,
+  source_id INTEGER,
+  budget_item_id INTEGER,
+  savings_item_id INTEGER,
+  status TEXT NOT NULL DEFAULT 'posted',
+  created_at TEXT NOT NULL
+)
+''';
+
+  static const createJournalLines = '''
+CREATE TABLE IF NOT EXISTS journal_lines (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  journal_entry_id INTEGER NOT NULL,
+  ledger_account_id INTEGER NOT NULL,
+  debit REAL NOT NULL DEFAULT 0 CHECK(debit >= 0),
+  credit REAL NOT NULL DEFAULT 0 CHECK(credit >= 0),
+  currency TEXT NOT NULL,
+  exchange_rate REAL,
+  base_amount REAL,
+  CHECK((debit > 0 AND credit = 0) OR (credit > 0 AND debit = 0)),
+  FOREIGN KEY(journal_entry_id) REFERENCES journal_entries(id),
+  FOREIGN KEY(ledger_account_id) REFERENCES ledger_accounts(id)
+)
+''';
 
   static const createBudgets = '''
 CREATE TABLE IF NOT EXISTS budgets (
@@ -69,6 +114,7 @@ CREATE TABLE financial_transactions (
   category_id INTEGER NOT NULL,
   related_type TEXT,
   related_id INTEGER,
+  journal_entry_id INTEGER,
   date TEXT NOT NULL,
   comment TEXT,
   created_at TEXT NOT NULL,
@@ -86,6 +132,10 @@ CREATE TABLE transfers (
   amount_to REAL NOT NULL,
   currency_to TEXT NOT NULL,
   exchange_rate REAL,
+  from_wallet_id INTEGER,
+  to_wallet_id INTEGER,
+  savings_item_id INTEGER,
+  journal_entry_id INTEGER,
   date TEXT NOT NULL,
   comment TEXT,
   created_at TEXT NOT NULL,
@@ -187,10 +237,18 @@ CREATE TABLE wallets (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   name TEXT NOT NULL,
   account_id INTEGER NOT NULL,
+  ledger_account_id INTEGER,
   amount REAL NOT NULL DEFAULT 0,
   currency TEXT NOT NULL,
+  wallet_type TEXT NOT NULL DEFAULT 'piggyBank',
+  icon_key TEXT,
+  color_hex TEXT,
+  savings_category_id INTEGER,
+  savings_item_id INTEGER,
+  is_spendable INTEGER NOT NULL DEFAULT 0,
   is_active INTEGER NOT NULL DEFAULT 1,
   created_at TEXT NOT NULL,
+  updated_at TEXT,
   FOREIGN KEY(account_id) REFERENCES accounts(id)
 )
 ''',
@@ -212,6 +270,7 @@ CREATE TABLE quick_actions (
   currency TEXT NOT NULL,
   category_id INTEGER,
   account_id INTEGER,
+  budget_item_id INTEGER,
   comment TEXT,
   icon TEXT,
   color TEXT,
@@ -222,5 +281,17 @@ CREATE TABLE quick_actions (
   FOREIGN KEY(account_id) REFERENCES accounts(id)
 )
 ''',
+    createLedgerAccounts,
+    createJournalEntries,
+    createJournalLines,
+    '''CREATE UNIQUE INDEX IF NOT EXISTS idx_journal_source
+ON journal_entries(source_type, source_id) WHERE source_id IS NOT NULL''',
+    '''CREATE UNIQUE INDEX IF NOT EXISTS idx_ledger_reference
+ON ledger_accounts(reference_type, reference_id)
+WHERE reference_type IS NOT NULL AND reference_id IS NOT NULL''',
+    '''CREATE INDEX IF NOT EXISTS idx_journal_budget
+ON journal_entries(budget_item_id, date)''',
+    '''CREATE INDEX IF NOT EXISTS idx_journal_savings
+ON journal_entries(savings_item_id, date)''',
   ];
 }

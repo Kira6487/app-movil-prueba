@@ -19,6 +19,8 @@ import 'package:finanzas_personales/utils/date_utils.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
+import 'test_fixtures.dart';
+
 void main() {
   late AppDatabase database;
   late CategoryService categoryService;
@@ -38,6 +40,7 @@ void main() {
       databasePath: inMemoryDatabasePath,
     );
     await database.initialize();
+    await installTestFixtures(database);
     categoryService = CategoryService(database: database);
     accountService = AccountService(database: database);
     transactionService = TransactionService(database: database);

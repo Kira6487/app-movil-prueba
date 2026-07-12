@@ -2,6 +2,7 @@ import 'package:sqflite/sqflite.dart';
 
 import '../database/app_database.dart';
 import '../models/category_model.dart';
+import 'ledger_service.dart';
 
 class CategoryService {
   CategoryService({AppDatabase? database})
@@ -46,10 +47,22 @@ class CategoryService {
     final nextOrder = category.sortOrder > 0
         ? category.sortOrder
         : await _nextSortOrder(category.type);
-    return db.insert(
-      'categories',
-      category.copyWith(sortOrder: nextOrder).toMap()..remove('id'),
-    );
+    return db.transaction((txn) async {
+      final id = await txn.insert('categories',
+          category.copyWith(sortOrder: nextOrder).toMap()..remove('id'));
+      if (category.type == CategoryScope.expense ||
+          category.type == CategoryScope.income) {
+        await LedgerService.ensureReferenceAccount(txn,
+            code:
+                '${category.type == CategoryScope.expense ? 'EXP' : 'INC'}-C-$id',
+            name: category.name,
+            type: category.type,
+            currency: 'SOL',
+            referenceType: 'category',
+            referenceId: id);
+      }
+      return id;
+    });
   }
 
   Future<CategoryModel> getOrCreateCategory({
@@ -69,18 +82,15 @@ class CategoryService {
 
     final now = DateTime.now().toIso8601String();
     final sortOrder = await _nextSortOrder(type);
-    final id = await db.insert(
-      'categories',
-      CategoryModel(
-        name: name,
-        type: type,
-        icon: icon,
-        color: color,
-        sortOrder: sortOrder,
-        createdAt: now,
-      ).toMap()
-        ..remove('id'),
+    final model = CategoryModel(
+      name: name,
+      type: type,
+      icon: icon,
+      color: color,
+      sortOrder: sortOrder,
+      createdAt: now,
     );
+    final id = await insertCategory(model);
     return CategoryModel(
       id: id,
       name: name,

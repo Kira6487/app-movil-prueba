@@ -2,13 +2,18 @@ import 'package:flutter/material.dart';
 
 import '../../models/account_model.dart';
 import '../../models/transaction_history_item.dart';
+import '../../models/transfer_model.dart';
+import '../../models/wallet_model.dart';
 import '../../providers/transaction_change_notifier.dart';
 import '../../services/account_service.dart';
 import '../../services/transaction_service.dart';
+import '../../services/savings_service.dart';
+import '../../services/transfer_service.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_text_styles.dart';
 import '../../utils/app_icon_mapper.dart';
 import '../../utils/currency_formatter.dart';
+import '../../utils/date_utils.dart';
 import '../../widgets/buttons/app_primary_button.dart';
 import '../../widgets/buttons/app_secondary_button.dart';
 import '../../widgets/cards/transaction_list_item.dart';
@@ -56,6 +61,7 @@ class AccountDetailScreen extends StatelessWidget {
                 else ...[
                   _AccountSummary(account: account),
                   _AccountActionGrid(account: account),
+                  _WalletSection(account: account),
                   const SectionHeader(
                     title: 'Historial de movimientos',
                     subtitle: 'Toca un movimiento para editarlo.',
@@ -80,6 +86,191 @@ class AccountDetailScreen extends StatelessWidget {
       ),
     );
     TransactionChangeNotifier.notifyChanged();
+  }
+}
+
+class _WalletSection extends StatefulWidget {
+  const _WalletSection({required this.account});
+
+  final AccountModel account;
+
+  @override
+  State<_WalletSection> createState() => _WalletSectionState();
+}
+
+class _WalletSectionState extends State<_WalletSection> {
+  late Future<List<WalletModel>> _future = _load();
+
+  Future<List<WalletModel>> _load() =>
+      SavingsService().getWalletsByAccount(widget.account.id!);
+
+  void _refresh() => setState(() => _future = _load());
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        SectionHeader(
+          title: 'Monederos y alcancías',
+          subtitle: 'Subcuentas separadas del saldo disponible.',
+          trailing: TextButton.icon(
+            onPressed: _create,
+            icon: const Icon(Icons.add),
+            label: const Text('Nueva alcancía',
+                maxLines: 1, overflow: TextOverflow.ellipsis),
+          ),
+        ),
+        FutureBuilder<List<WalletModel>>(
+          future: _future,
+          builder: (context, snapshot) {
+            final wallets = snapshot.data ?? const [];
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            if (wallets.isEmpty) {
+              return const EmptyState(
+                title: 'Sin alcancías',
+                message: 'Crea una para separar dinero de esta cuenta.',
+                icon: Icons.savings_outlined,
+              );
+            }
+            return AppCard(
+              child: Column(
+                children: [
+                  for (final wallet in wallets)
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: const Icon(Icons.savings_outlined),
+                      title: Text(wallet.name,
+                          maxLines: 1, overflow: TextOverflow.ellipsis),
+                      subtitle: Text(
+                          wallet.type == 'wallet' ? 'Monedero' : 'Alcancía'),
+                      trailing: Text(widget.account.currency == 'USD'
+                          ? formatUsd(wallet.amount)
+                          : formatSol(wallet.amount)),
+                      onTap: () => _actions(wallet),
+                    ),
+                ],
+              ),
+            );
+          },
+        ),
+      ],
+    );
+  }
+
+  Future<void> _create() async {
+    final controller = TextEditingController();
+    final name = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Nueva alcancía'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          decoration: const InputDecoration(labelText: 'Nombre'),
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancelar')),
+          FilledButton(
+              onPressed: () => Navigator.pop(context, controller.text.trim()),
+              child: const Text('Guardar')),
+        ],
+      ),
+    );
+    controller.dispose();
+    if (name == null || name.isEmpty) return;
+    final now = AppDateUtils.nowIso();
+    await SavingsService().insertWallet(WalletModel(
+      name: name,
+      accountId: widget.account.id!,
+      currency: widget.account.currency,
+      createdAt: now,
+      updatedAt: now,
+    ));
+    _refresh();
+  }
+
+  Future<void> _actions(WalletModel wallet) async {
+    final action = await showModalBottomSheet<String>(
+      context: context,
+      builder: (context) => SafeArea(
+        child: Wrap(children: [
+          ListTile(
+              leading: const Icon(Icons.add),
+              title: const Text('Depositar'),
+              onTap: () => Navigator.pop(context, 'deposit')),
+          ListTile(
+              leading: const Icon(Icons.remove),
+              title: const Text('Retirar'),
+              onTap: () => Navigator.pop(context, 'withdraw')),
+          ListTile(
+              leading: const Icon(Icons.delete_outline),
+              title: const Text('Eliminar'),
+              onTap: () => Navigator.pop(context, 'delete')),
+        ]),
+      ),
+    );
+    if (action == 'delete') {
+      try {
+        await SavingsService().deleteOrDeactivateWallet(wallet.id!);
+        _refresh();
+      } catch (error) {
+        if (mounted) {
+          ScaffoldMessenger.of(context)
+              .showSnackBar(SnackBar(content: Text('$error')));
+        }
+      }
+    } else if (action != null) {
+      await _move(wallet, deposit: action == 'deposit');
+    }
+  }
+
+  Future<void> _move(WalletModel wallet, {required bool deposit}) async {
+    final controller = TextEditingController();
+    final amount = await showDialog<double>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(deposit ? 'Depositar' : 'Retirar'),
+        content: TextField(
+            controller: controller,
+            autofocus: true,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            decoration: const InputDecoration(labelText: 'Monto')),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancelar')),
+          FilledButton(
+              onPressed: () => Navigator.pop(context,
+                  double.tryParse(controller.text.replaceAll(',', '.'))),
+              child: Text(deposit ? 'Depositar' : 'Retirar')),
+        ],
+      ),
+    );
+    controller.dispose();
+    if (amount == null || amount <= 0) return;
+    final now = AppDateUtils.nowIso();
+    await TransferService().insertTransfer(TransferModel(
+      fromAccountId: widget.account.id!,
+      toAccountId: widget.account.id!,
+      fromWalletId: deposit ? null : wallet.id,
+      toWalletId: deposit ? wallet.id : null,
+      savingsItemId: wallet.savingsItemId,
+      amountFrom: amount,
+      currencyFrom: widget.account.currency,
+      amountTo: amount,
+      currencyTo: widget.account.currency,
+      date: now,
+      comment:
+          deposit ? 'Depósito en ${wallet.name}' : 'Retiro de ${wallet.name}',
+      createdAt: now,
+    ));
+    TransactionChangeNotifier.notifyChanged();
+    _refresh();
   }
 }
 

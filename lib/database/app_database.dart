@@ -2,7 +2,7 @@ import 'package:path/path.dart' as p;
 import 'package:sqflite/sqflite.dart';
 
 import 'database_schema.dart';
-import 'seed_data.dart';
+import 'ledger_migration.dart';
 
 class AppDatabase {
   AppDatabase._({DatabaseFactory? databaseFactory, String? databasePath})
@@ -60,7 +60,7 @@ class AppDatabase {
       for (final statement in DatabaseSchema.statements) {
         await db.execute(statement);
       }
-      await SeedData.insertIfEmpty(db);
+      await LedgerMigration.migrate(db);
     }
 
     Future<void> upgrade(Database db, int oldVersion, int newVersion) async {
@@ -88,6 +88,9 @@ WHERE NOT EXISTS (SELECT 1 FROM budgets)
       }
       if (oldVersion < 3) {
         await _migrateToV3(db);
+      }
+      if (oldVersion < 4) {
+        await LedgerMigration.migrate(db);
       }
     }
 

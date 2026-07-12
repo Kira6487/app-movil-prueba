@@ -6,6 +6,7 @@ class QuickActionModel {
     required this.currency,
     this.categoryId,
     this.accountId,
+    this.budgetItemId,
     this.comment,
     this.icon,
     this.color,
@@ -20,6 +21,7 @@ class QuickActionModel {
   final String currency;
   final int? categoryId;
   final int? accountId;
+  final int? budgetItemId;
   final String? comment;
   final String? icon;
   final String? color;
@@ -35,6 +37,7 @@ class QuickActionModel {
         currency: map['currency'] as String,
         categoryId: map['category_id'] as int?,
         accountId: map['account_id'] as int?,
+        budgetItemId: map['budget_item_id'] as int?,
         comment: map['comment'] as String?,
         icon: map['icon'] as String?,
         color: map['color'] as String?,
@@ -50,6 +53,7 @@ class QuickActionModel {
         'currency': currency,
         'category_id': categoryId,
         'account_id': accountId,
+        'budget_item_id': budgetItemId,
         'comment': comment,
         'icon': icon,
         'color': color,
@@ -65,6 +69,7 @@ class QuickActionModel {
     String? currency,
     int? categoryId,
     int? accountId,
+    int? budgetItemId,
     String? comment,
     String? icon,
     String? color,
@@ -79,6 +84,7 @@ class QuickActionModel {
       currency: currency ?? this.currency,
       categoryId: categoryId ?? this.categoryId,
       accountId: accountId ?? this.accountId,
+      budgetItemId: budgetItemId ?? this.budgetItemId,
       comment: comment ?? this.comment,
       icon: icon ?? this.icon,
       color: color ?? this.color,

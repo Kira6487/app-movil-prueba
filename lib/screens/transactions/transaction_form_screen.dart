@@ -306,7 +306,7 @@ class _TransactionFormScreenState extends State<TransactionFormScreen> {
                                 : null,
                             onChanged: (value) =>
                                 setState(() => _selectedRelated = value),
-                            required: _relatedOptions.isNotEmpty,
+                            required: false,
                           ),
                         ],
                         const SizedBox(height: 14),
@@ -349,16 +349,26 @@ class _TransactionFormScreenState extends State<TransactionFormScreen> {
     );
   }
 
-  void _selectQuickAction(
+  Future<void> _selectQuickAction(
     QuickActionModel action,
     _TransactionFormData data,
-  ) {
+  ) async {
     setState(() {
       _applyQuickAction(action);
       _selectedAccount = _findById(data.accounts, action.accountId);
       _selectedCategory = _findById(data.categories, action.categoryId);
     });
-    _refreshRelatedOptions();
+    await _refreshRelatedOptions();
+    final budgetId = action.budgetItemId;
+    if (budgetId != null && mounted) {
+      setState(() {
+        _selectedRelated = _relatedOptions
+            .where((item) =>
+                item.type == TransactionRelatedType.budget &&
+                item.id == budgetId)
+            .firstOrNull;
+      });
+    }
   }
 
   void _applyQuickAction(QuickActionModel? action) {
@@ -558,7 +568,7 @@ class _RelatedField extends StatelessWidget {
   Widget build(BuildContext context) {
     if (loading) {
       return const AppTextInput(
-        label: 'Relacionado',
+        label: 'Contrapartida',
         enabled: false,
         prefixIcon: Icons.link_outlined,
         hintText: 'Buscando opciones compatibles...',
@@ -566,21 +576,21 @@ class _RelatedField extends StatelessWidget {
     }
     if (options.isEmpty) {
       return const AppTextInput(
-        label: 'Relacionado',
+        label: 'Contrapartida',
         enabled: false,
         prefixIcon: Icons.link_off_outlined,
-        hintText: 'Sin relación disponible',
+        hintText: 'Sin contrapartida disponible',
       );
     }
     return AppDropdownField<RelatedItemOption>(
-      label: 'Relacionado',
+      label: 'Contrapartida',
       items: options,
       itemLabel: (option) => '${option.name} · ${option.subtitle}',
       value: value,
       prefixIcon: Icons.link_outlined,
       onChanged: onChanged,
       validator: (option) =>
-          required && option == null ? 'Selecciona una relación' : null,
+          required && option == null ? 'Selecciona una contrapartida' : null,
     );
   }
 }

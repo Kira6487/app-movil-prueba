@@ -20,7 +20,7 @@ class AppPrimaryButton extends StatelessWidget {
       return FilledButton(
         onPressed: onPressed,
         style: FilledButton.styleFrom(padding: AppSpacing.button),
-        child: Text(label),
+        child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
       );
     }
 
@@ -28,7 +28,7 @@ class AppPrimaryButton extends StatelessWidget {
       onPressed: onPressed,
       style: FilledButton.styleFrom(padding: AppSpacing.button),
       icon: Icon(icon),
-      label: Text(label),
+      label: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
     );
   }
 }
