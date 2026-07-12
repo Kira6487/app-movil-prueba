@@ -3,6 +3,7 @@ import 'package:sqflite/sqflite.dart';
 
 import 'database_schema.dart';
 import 'ledger_migration.dart';
+import 'seed_data.dart';
 
 class AppDatabase {
   AppDatabase._({DatabaseFactory? databaseFactory, String? databasePath})
@@ -60,6 +61,7 @@ class AppDatabase {
       for (final statement in DatabaseSchema.statements) {
         await db.execute(statement);
       }
+      await SeedData.insertIfEmpty(db);
       await LedgerMigration.migrate(db);
     }
 

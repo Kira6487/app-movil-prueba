@@ -14,18 +14,17 @@ import 'test_fixtures.dart';
 void main() {
   setUpAll(sqfliteFfiInit);
 
-  test('una instalación nueva no contiene datos demo', () async {
+  test(
+      'una instalación nueva tiene datos iniciales sin transacciones ni presupuestos',
+      () async {
     final database = AppDatabase.test(
       databaseFactory: databaseFactoryFfi,
       databasePath: inMemoryDatabasePath,
     );
     final db = await database.database;
     for (final table in [
-      'accounts',
-      'categories',
       'financial_transactions',
       'budgets',
-      'quick_actions',
       'savings_goals',
       'wallets',
     ]) {
@@ -33,6 +32,15 @@ void main() {
       final count = (rows.first['total'] as num?)?.toInt() ?? -1;
       expect(count, 0, reason: '$table debe iniciar vacío');
     }
+    final accountRows =
+        await db.rawQuery('SELECT COUNT(*) AS total FROM accounts');
+    expect((accountRows.first['total'] as num).toInt(), 2);
+    final categoryRows =
+        await db.rawQuery('SELECT COUNT(*) AS total FROM categories');
+    expect((categoryRows.first['total'] as num).toInt(), 13);
+    final actionRows =
+        await db.rawQuery('SELECT COUNT(*) AS total FROM quick_actions');
+    expect((actionRows.first['total'] as num).toInt(), 3);
     await database.close();
   });
 

@@ -8,8 +8,6 @@ import 'package:finanzas_personales/services/quick_action_service.dart';
 
 Future<void> installTestFixtures(AppDatabase database) async {
   final db = await database.database;
-  final existing = await db.rawQuery('SELECT COUNT(*) total FROM accounts');
-  if ((existing.first['total'] as num).toInt() > 0) return;
   const createdAt = '2026-07-01T00:00:00.000';
   final categories = CategoryService(database: database);
   final ids = <String, int>{};

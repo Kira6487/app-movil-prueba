@@ -4,11 +4,13 @@ import '../../models/account_model.dart';
 import '../../models/category_model.dart';
 import '../../models/financial_transaction_model.dart';
 import '../../models/quick_action_model.dart';
+import '../../models/related_item_option.dart';
 import '../../providers/transaction_change_notifier.dart';
 import '../../screens/placeholders/action_placeholder_screen.dart';
 import '../../screens/transactions/transaction_form_screen.dart';
 import '../../screens/transfers/transfer_form_screen.dart';
 import '../../services/account_service.dart';
+import '../../services/budget_service.dart';
 import '../../services/category_service.dart';
 import '../../services/quick_action_service.dart';
 import '../../services/transaction_service.dart';
@@ -18,6 +20,7 @@ import '../../theme/app_text_styles.dart';
 import '../../utils/app_icon_mapper.dart';
 import '../../utils/date_utils.dart';
 import '../../widgets/common/empty_state.dart';
+import '../../widgets/inputs/app_dropdown_field.dart';
 
 class AddActionSheet extends StatefulWidget {
   const AddActionSheet({super.key});
@@ -34,8 +37,11 @@ class _AddActionSheetState extends State<AddActionSheet> {
   late Future<_QuickExpenseData> _dataFuture;
   AccountModel? _selectedAccount;
   CategoryModel? _selectedCategory;
+  RelatedItemOption? _selectedRelated;
+  List<RelatedItemOption> _relatedOptions = const [];
   String _currency = 'SOL';
   bool _saving = false;
+  bool _loadingRelated = false;
 
   @override
   void initState() {
@@ -63,11 +69,35 @@ class _AddActionSheetState extends State<AddActionSheet> {
     if (categories.isNotEmpty) {
       _selectedCategory = categories.first;
     }
+    _relatedOptions = await _loadRelatedOptions();
     return _QuickExpenseData(
       accounts: accounts,
       categories: categories,
       quickActions: quickActions,
     );
+  }
+
+  Future<List<RelatedItemOption>> _loadRelatedOptions() async {
+    final category = _selectedCategory;
+    if (category?.id == null) return const [];
+    return BudgetService().getRelatedOptions(
+      categoryId: category!.id!,
+      date: DateTime.now(),
+      operationType: 'expense',
+    );
+  }
+
+  Future<void> _refreshRelatedOptions() async {
+    setState(() => _loadingRelated = true);
+    final options = await _loadRelatedOptions();
+    if (!mounted) return;
+    setState(() {
+      _relatedOptions = options;
+      if (!_relatedOptions.any((o) => o.key == _selectedRelated?.key)) {
+        _selectedRelated = null;
+      }
+      _loadingRelated = false;
+    });
   }
 
   @override
@@ -179,6 +209,7 @@ class _AddActionSheetState extends State<AddActionSheet> {
                 value: _selectedCategory,
                 onChanged: (value) {
                   setState(() => _selectedCategory = value);
+                  _refreshRelatedOptions();
                 },
                 validator: (value) =>
                     value == null ? 'Selecciona una categoria' : null,
@@ -202,6 +233,16 @@ class _AddActionSheetState extends State<AddActionSheet> {
                 ],
               );
             },
+          ),
+          const SizedBox(height: 14),
+          _RelatedField(
+            loading: _loadingRelated,
+            options: _relatedOptions,
+            value: _relatedOptions.contains(_selectedRelated)
+                ? _selectedRelated
+                : null,
+            onChanged: (value) => setState(() => _selectedRelated = value),
+            required: false,
           ),
           const SizedBox(height: 14),
           _CommentField(controller: _commentController),
@@ -306,7 +347,8 @@ class _AddActionSheetState extends State<AddActionSheet> {
     );
   }
 
-  void _applyQuickAction(QuickActionModel action, _QuickExpenseData data) {
+  Future<void> _applyQuickAction(
+      QuickActionModel action, _QuickExpenseData data) async {
     setState(() {
       _amountController.text = _formatNumber(action.amount);
       _currency = action.currency;
@@ -318,6 +360,17 @@ class _AddActionSheetState extends State<AddActionSheet> {
           _selectedCategory ??
           data.categories.first;
     });
+    await _refreshRelatedOptions();
+    final budgetId = action.budgetItemId;
+    if (budgetId != null && mounted) {
+      setState(() {
+        _selectedRelated = _relatedOptions
+            .where((item) =>
+                item.type == TransactionRelatedType.budget &&
+                item.id == budgetId)
+            .firstOrNull;
+      });
+    }
   }
 
   Future<void> _saveExpense() async {
@@ -336,6 +389,8 @@ class _AddActionSheetState extends State<AddActionSheet> {
           currency: _currency,
           accountId: account.id!,
           categoryId: category.id!,
+          relatedType: _selectedRelated?.type,
+          relatedId: _selectedRelated?.id,
           date: AppDateUtils.dateOnlyIso(DateTime.now()),
           comment: _commentController.text.trim().isEmpty
               ? null
@@ -961,6 +1016,88 @@ BoxDecoration _panelDecoration() {
     borderRadius: BorderRadius.circular(20),
     border: Border.all(color: AppColors.border.withValues(alpha: 0.68)),
   );
+}
+
+class _RelatedField extends StatelessWidget {
+  const _RelatedField({
+    required this.loading,
+    required this.options,
+    required this.value,
+    required this.onChanged,
+    required this.required,
+  });
+
+  final bool loading;
+  final List<RelatedItemOption> options;
+  final RelatedItemOption? value;
+  final ValueChanged<RelatedItemOption?> onChanged;
+  final bool required;
+
+  @override
+  Widget build(BuildContext context) {
+    if (loading) {
+      return _panel(
+        child: const Row(
+          children: [
+            Icon(Icons.link_outlined, color: AppColors.textMuted, size: 20),
+            SizedBox(width: 12),
+            Expanded(
+              child: Text('Contrapartida', style: AppTextStyles.muted),
+            ),
+            SizedBox(
+              width: 16,
+              height: 16,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+          ],
+        ),
+      );
+    }
+    if (options.isEmpty) {
+      return _panel(
+        child: const Row(
+          children: [
+            Icon(Icons.link_off_outlined, color: AppColors.textMuted, size: 20),
+            SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Contrapartida', style: AppTextStyles.muted),
+                  SizedBox(height: 2),
+                  Text('Sin contrapartida disponible',
+                      style: AppTextStyles.body),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+    return AppDropdownField<RelatedItemOption>(
+      label: 'Contrapartida',
+      items: options,
+      itemLabel: (option) => '${option.name} · ${option.subtitle}',
+      value: value,
+      prefixIcon: Icons.link_outlined,
+      onChanged: onChanged,
+      validator: (option) =>
+          required && option == null ? 'Selecciona una contrapartida' : null,
+    );
+  }
+
+  Widget _panel({required Widget child}) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppColors.border.withValues(alpha: 0.68)),
+      ),
+      child: child,
+    );
+  }
 }
 
 class _QuickExpenseData {
