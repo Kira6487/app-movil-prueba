@@ -130,6 +130,15 @@ ON journal_entries(savings_item_id, date)''');
     }
   }
 
+  static Future<void> migrateSavingsWalletFields(Database db) async {
+    await _addColumn(db, 'wallets', 'savings_category_id', 'INTEGER');
+    await _addColumn(db, 'wallets', 'savings_item_id', 'INTEGER');
+    await _addColumn(db, 'wallets', 'is_active', 'INTEGER NOT NULL DEFAULT 1');
+    await _addColumn(db, 'wallets', 'icon_key', 'TEXT');
+    await _addColumn(db, 'wallets', 'color_hex', 'TEXT');
+    await _addColumn(db, 'wallets', 'updated_at', 'TEXT');
+  }
+
   static Future<void> _migrateTransaction(
     Database db,
     Map<String, Object?> row,

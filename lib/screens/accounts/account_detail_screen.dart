@@ -24,6 +24,8 @@ import '../../widgets/common/section_header.dart';
 import '../transactions/transaction_form_screen.dart';
 import '../transfers/transfer_form_screen.dart';
 import 'account_form_screen.dart';
+import 'wallet_detail_screen.dart';
+import 'wallet_form_screen.dart';
 
 class AccountDetailScreen extends StatelessWidget {
   const AccountDetailScreen({super.key, required this.accountId});
@@ -115,7 +117,7 @@ class _WalletSectionState extends State<_WalletSection> {
           title: 'Monederos y alcancías',
           subtitle: 'Subcuentas separadas del saldo disponible.',
           trailing: TextButton.icon(
-            onPressed: _create,
+            onPressed: _createNew,
             icon: const Icon(Icons.add),
             label: const Text('Nueva alcancía',
                 maxLines: 1, overflow: TextOverflow.ellipsis),
@@ -149,7 +151,13 @@ class _WalletSectionState extends State<_WalletSection> {
                       trailing: Text(widget.account.currency == 'USD'
                           ? formatUsd(wallet.amount)
                           : formatSol(wallet.amount)),
-                      onTap: () => _actions(wallet),
+                      onTap: () async {
+                        await Navigator.of(context).push(MaterialPageRoute(
+                          builder: (_) =>
+                              WalletDetailScreen(walletId: wallet.id!),
+                        ));
+                        if (mounted) _refresh();
+                      },
                     ),
                 ],
               ),
@@ -160,6 +168,8 @@ class _WalletSectionState extends State<_WalletSection> {
     );
   }
 
+  // Legacy dialog kept for data compatibility; new alcancías use WalletFormScreen.
+  // ignore: unused_element
   Future<void> _create() async {
     final controller = TextEditingController();
     final name = await showDialog<String>(
@@ -194,6 +204,14 @@ class _WalletSectionState extends State<_WalletSection> {
     _refresh();
   }
 
+  Future<void> _createNew() async {
+    await Navigator.of(context).push(MaterialPageRoute(
+      builder: (_) => WalletFormScreen(account: widget.account),
+    ));
+    if (mounted) _refresh();
+  }
+
+  // ignore: unused_element
   Future<void> _actions(WalletModel wallet) async {
     final action = await showModalBottomSheet<String>(
       context: context,
@@ -252,7 +270,7 @@ class _WalletSectionState extends State<_WalletSection> {
       ),
     );
     controller.dispose();
-    if (amount == null || amount <= 0) return;
+    if (!mounted || amount == null || amount <= 0) return;
     final now = AppDateUtils.nowIso();
     await TransferService().insertTransfer(TransferModel(
       fromAccountId: widget.account.id!,

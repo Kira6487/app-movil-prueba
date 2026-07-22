@@ -10,6 +10,7 @@ import '../../services/account_service.dart';
 import '../../services/budget_service.dart';
 import '../../services/category_service.dart';
 import '../../services/quick_action_service.dart';
+import '../../services/savings_service.dart';
 import '../../services/transaction_service.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_text_styles.dart';
@@ -306,7 +307,7 @@ class _TransactionFormScreenState extends State<TransactionFormScreen> {
                                 : null,
                             onChanged: (value) =>
                                 setState(() => _selectedRelated = value),
-                            required: false,
+                            required: _isSavings,
                           ),
                         ],
                         const SizedBox(height: 14),
@@ -485,6 +486,14 @@ class _TransactionFormScreenState extends State<TransactionFormScreen> {
     if (category?.id == null || (!_isExpense && !_isSavings)) {
       return const [];
     }
+    if (_isSavings) {
+      final account = _selectedAccount;
+      if (account == null) return const [];
+      return SavingsService().getSavingsItemOptions(
+        categoryId: category!.id!,
+        currency: _currency,
+      );
+    }
     return BudgetService().getRelatedOptions(
       categoryId: category!.id!,
       date: _selectedDate,
@@ -586,6 +595,7 @@ class _RelatedField extends StatelessWidget {
       label: 'Contrapartida',
       items: options,
       itemLabel: (option) => '${option.name} · ${option.subtitle}',
+      selectedItemLabel: (option) => option.name,
       value: value,
       prefixIcon: Icons.link_outlined,
       onChanged: onChanged,

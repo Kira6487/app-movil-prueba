@@ -1,7 +1,9 @@
 import '../database/app_database.dart';
 import '../models/category_model.dart';
+import '../models/related_item_option.dart';
 import '../models/savings_goal_model.dart';
 import '../models/wallet_model.dart';
+import '../models/wallet_movement.dart';
 import 'ledger_service.dart';
 
 class SavingsService {
@@ -20,6 +22,46 @@ class SavingsService {
       orderBy: 'created_at DESC',
     );
     return rows.map(SavingsGoalModel.fromMap).toList();
+  }
+
+  Future<List<RelatedItemOption>> getSavingsItemOptions({
+    required int categoryId,
+    required String currency,
+  }) async {
+    final db = await _database.database;
+    final rows = await db.rawQuery('''
+SELECT g.id, g.name, g.target_amount, g.currency, c.name AS category_name
+FROM savings_goals g
+JOIN categories c ON c.id = g.category_id
+WHERE g.is_active = 1 AND g.category_id = ? AND g.currency = ?
+ORDER BY g.name COLLATE NOCASE
+''', [categoryId, currency]);
+    return rows
+        .map((row) => RelatedItemOption(
+              type: 'savings',
+              id: row['id'] as int,
+              name: row['name'] as String,
+              subtitle:
+                  'Objetivo de ahorro · ${row['currency']} · ${row['category_name']}',
+            ))
+        .toList();
+  }
+
+  Future<List<WalletMovement>> getWalletHistory(int walletId) async {
+    final db = await _database.database;
+    final rows = await db.rawQuery('''
+SELECT e.id, e.date, e.description, e.status, e.source_type,
+       e.savings_item_id, l.currency, l.debit, l.credit, l.base_amount,
+       COALESCE(e.description, 'Movimiento') AS comment,
+       CASE WHEN l.debit > 0 THEN l.debit ELSE l.credit END AS movement_amount,
+       CASE WHEN l.debit > 0 THEN 'Depósito' ELSE 'Retiro' END AS movement_type
+FROM journal_entries e
+JOIN journal_lines l ON l.journal_entry_id = e.id
+JOIN wallets w ON w.ledger_account_id = l.ledger_account_id
+WHERE w.id = ? AND e.status = 'posted'
+ORDER BY e.date DESC, e.id DESC, l.id DESC
+''', [walletId]);
+    return rows.map(WalletMovement.fromMap).toList();
   }
 
   Future<int> insertSavingsGoal(SavingsGoalModel goal) async {
@@ -67,7 +109,15 @@ ORDER BY w.name ASC
     return rows.map(WalletModel.fromMap).toList();
   }
 
+  Future<WalletModel?> getWalletById(int walletId) async {
+    final db = await _database.database;
+    final rows = await db.query('wallets',
+        where: 'id = ?', whereArgs: [walletId], limit: 1);
+    return rows.isEmpty ? null : WalletModel.fromMap(rows.first);
+  }
+
   Future<int> insertWallet(WalletModel wallet) async {
+    await _validateWallet(wallet);
     final db = await _database.database;
     return db.transaction((txn) async {
       final parentRows = await txn.query('accounts',
@@ -104,6 +154,7 @@ ORDER BY w.name ASC
   Future<int> updateWallet(WalletModel wallet) async {
     final id = wallet.id;
     if (id == null) throw ArgumentError('Wallet id is required.');
+    await _validateWallet(wallet);
     final db = await _database.database;
     return db.transaction((txn) async {
       final updated = await txn.update(
@@ -123,6 +174,18 @@ ORDER BY w.name ASC
           whereArgs: ['wallet', id]);
       return updated;
     });
+  }
+
+  Future<double> getWalletBalance(int walletId) async {
+    final wallet = await getWalletById(walletId);
+    if (wallet == null || wallet.ledgerAccountId == null) return 0;
+    final db = await _database.database;
+    final rows = await db.rawQuery('''
+SELECT COALESCE(SUM(l.debit - l.credit), 0) AS total
+FROM journal_lines l JOIN journal_entries e ON e.id = l.journal_entry_id
+WHERE l.ledger_account_id = ? AND e.status = 'posted'
+''', [wallet.ledgerAccountId]);
+    return (rows.first['total'] as num).toDouble();
   }
 
   Future<int> deleteOrDeactivateWallet(int walletId) async {
@@ -170,6 +233,36 @@ WHERE l.ledger_account_id=? AND e.status='posted' ''', [ledgerId]);
     );
     if (rows.isEmpty || rows.first['type'] != CategoryScope.savings) {
       throw ArgumentError('A savings category is required.');
+    }
+  }
+
+  Future<void> _validateWallet(WalletModel wallet) async {
+    if (wallet.name.trim().isEmpty) {
+      throw ArgumentError('El nombre de la alcancía es obligatorio.');
+    }
+    // Legacy alcancías pueden existir sin contrapartida y se completan al editar.
+    if (wallet.savingsCategoryId == null || wallet.savingsItemId == null) {
+      return;
+    }
+    final db = await _database.database;
+    final category = await db.query('categories',
+        columns: ['type'],
+        where: 'id = ?',
+        whereArgs: [wallet.savingsCategoryId],
+        limit: 1);
+    if (category.isEmpty || category.first['type'] != CategoryScope.savings) {
+      throw ArgumentError('La categoría debe ser de ahorro.');
+    }
+    final goal = await db.query('savings_goals',
+        columns: ['category_id', 'currency', 'is_active'],
+        where: 'id = ?',
+        whereArgs: [wallet.savingsItemId],
+        limit: 1);
+    if (goal.isEmpty ||
+        goal.first['is_active'] != 1 ||
+        goal.first['category_id'] != wallet.savingsCategoryId ||
+        goal.first['currency'] != wallet.currency) {
+      throw ArgumentError('La contrapartida no es compatible con la alcancía.');
     }
   }
 }

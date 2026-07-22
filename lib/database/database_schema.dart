@@ -2,7 +2,7 @@ class DatabaseSchema {
   const DatabaseSchema._();
 
   static const databaseName = 'finanzas_personales.db';
-  static const version = 4;
+  static const version = 5;
 
   static const createLedgerAccounts = '''
 CREATE TABLE IF NOT EXISTS ledger_accounts (

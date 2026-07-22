@@ -6,6 +6,7 @@ class AppDropdownField<T> extends StatelessWidget {
     required this.label,
     required this.items,
     required this.itemLabel,
+    this.selectedItemLabel,
     this.value,
     this.onChanged,
     this.validator,
@@ -15,6 +16,7 @@ class AppDropdownField<T> extends StatelessWidget {
   final String label;
   final List<T> items;
   final String Function(T item) itemLabel;
+  final String Function(T item)? selectedItemLabel;
   final T? value;
   final ValueChanged<T?>? onChanged;
   final FormFieldValidator<T>? validator;
@@ -31,6 +33,19 @@ class AppDropdownField<T> extends StatelessWidget {
             child: Text(itemLabel(item)),
           ),
       ],
+      selectedItemBuilder: selectedItemLabel == null
+          ? null
+          : (context) => [
+                for (final item in items)
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      selectedItemLabel!(item),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+              ],
       onChanged: onChanged,
       validator: validator,
       decoration: InputDecoration(

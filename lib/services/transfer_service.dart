@@ -35,6 +35,7 @@ class TransferService {
           txn, transfer.fromWalletId, transfer.fromAccountId, 'origin');
       await _validateWalletEndpoint(
           txn, transfer.toWalletId, transfer.toAccountId, 'destination');
+      await _validateSavingsItem(txn, transfer);
 
       final fromCategoryId = await _getOrCreateCategory(
         txn,
@@ -126,40 +127,42 @@ class TransferService {
       await txn.update('transfers', {'journal_entry_id': journalId},
           where: 'id = ?', whereArgs: [transferId]);
 
-      await txn.insert('financial_transactions', {
-        'type': 'expense',
-        'amount': transfer.amountFrom,
-        'currency': transfer.currencyFrom,
-        'exchange_rate': transfer.exchangeRate,
-        'amount_in_base_currency': MoneyUtils.amountInBaseCurrency(
-          amount: transfer.amountFrom,
-          currency: transfer.currencyFrom,
-          baseCurrency: 'SOL',
-          exchangeRate: transfer.exchangeRate,
-        ),
-        'account_id': transfer.fromAccountId,
-        'category_id': fromCategoryId,
-        'date': transfer.date,
-        'comment': transferComment,
-        'created_at': transfer.createdAt,
-      });
-      await txn.insert('financial_transactions', {
-        'type': 'income',
-        'amount': transfer.amountTo,
-        'currency': transfer.currencyTo,
-        'exchange_rate': transfer.exchangeRate,
-        'amount_in_base_currency': MoneyUtils.amountInBaseCurrency(
-          amount: transfer.amountTo,
-          currency: transfer.currencyTo,
-          baseCurrency: 'SOL',
-          exchangeRate: transfer.exchangeRate,
-        ),
-        'account_id': transfer.toAccountId,
-        'category_id': toCategoryId,
-        'date': transfer.date,
-        'comment': transferComment,
-        'created_at': transfer.createdAt,
-      });
+      if (transfer.fromWalletId == null && transfer.toWalletId == null) {
+        await txn.insert('financial_transactions', {
+          'type': 'expense',
+          'amount': transfer.amountFrom,
+          'currency': transfer.currencyFrom,
+          'exchange_rate': transfer.exchangeRate,
+          'amount_in_base_currency': MoneyUtils.amountInBaseCurrency(
+            amount: transfer.amountFrom,
+            currency: transfer.currencyFrom,
+            baseCurrency: 'SOL',
+            exchangeRate: transfer.exchangeRate,
+          ),
+          'account_id': transfer.fromAccountId,
+          'category_id': fromCategoryId,
+          'date': transfer.date,
+          'comment': transferComment,
+          'created_at': transfer.createdAt,
+        });
+        await txn.insert('financial_transactions', {
+          'type': 'income',
+          'amount': transfer.amountTo,
+          'currency': transfer.currencyTo,
+          'exchange_rate': transfer.exchangeRate,
+          'amount_in_base_currency': MoneyUtils.amountInBaseCurrency(
+            amount: transfer.amountTo,
+            currency: transfer.currencyTo,
+            baseCurrency: 'SOL',
+            exchangeRate: transfer.exchangeRate,
+          ),
+          'account_id': transfer.toAccountId,
+          'category_id': toCategoryId,
+          'date': transfer.date,
+          'comment': transferComment,
+          'created_at': transfer.createdAt,
+        });
+      }
 
       return transferId;
     });
@@ -245,6 +248,37 @@ class TransferService {
         rows.first['account_id'] != accountId ||
         rows.first['is_active'] != 1) {
       throw StateError('The $label wallet is not active for this account.');
+    }
+  }
+
+  Future<void> _validateSavingsItem(
+    dynamic txn,
+    TransferModel transfer,
+  ) async {
+    final walletId = transfer.toWalletId ?? transfer.fromWalletId;
+    if (walletId == null) return;
+    final rows = await txn.query('wallets',
+        columns: ['savings_category_id', 'savings_item_id', 'currency'],
+        where: 'id = ?',
+        whereArgs: [walletId],
+        limit: 1);
+    if (rows.isEmpty) throw StateError('Savings wallet does not exist.');
+    // Legacy wallets without category metadata keep their historical flow.
+    if (rows.first['savings_category_id'] == null) return;
+    final itemId =
+        transfer.savingsItemId ?? rows.first['savings_item_id'] as int?;
+    if (itemId == null) {
+      throw ArgumentError('La alcancía necesita una contrapartida de ahorro.');
+    }
+    final item = await txn.rawQuery('''
+SELECT g.id FROM savings_goals g
+JOIN categories c ON c.id = g.category_id
+WHERE g.id = ? AND g.is_active = 1 AND c.type = 'savings'
+  AND g.category_id = ? AND g.currency = ?
+''', [itemId, rows.first['savings_category_id'], rows.first['currency']]);
+    if (item.isEmpty) {
+      throw ArgumentError(
+          'La contrapartida debe ser un objetivo de ahorro compatible.');
     }
   }
 }
