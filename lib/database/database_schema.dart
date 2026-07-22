@@ -2,7 +2,7 @@ class DatabaseSchema {
   const DatabaseSchema._();
 
   static const databaseName = 'finanzas_personales.db';
-  static const version = 5;
+  static const version = 6;
 
   static const createLedgerAccounts = '''
 CREATE TABLE IF NOT EXISTS ledger_accounts (
@@ -227,6 +227,8 @@ CREATE TABLE savings_goals (
   currency TEXT NOT NULL,
   planned_monthly_amount REAL,
   deadline TEXT,
+  icon_key TEXT,
+  color_hex TEXT,
   is_active INTEGER NOT NULL DEFAULT 1,
   created_at TEXT NOT NULL
   ,FOREIGN KEY(category_id) REFERENCES categories(id)

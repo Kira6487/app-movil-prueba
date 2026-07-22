@@ -139,6 +139,11 @@ ON journal_entries(savings_item_id, date)''');
     await _addColumn(db, 'wallets', 'updated_at', 'TEXT');
   }
 
+  static Future<void> migrateSavingsGoalVisualFields(Database db) async {
+    await _addColumn(db, 'savings_goals', 'icon_key', 'TEXT');
+    await _addColumn(db, 'savings_goals', 'color_hex', 'TEXT');
+  }
+
   static Future<void> _migrateTransaction(
     Database db,
     Map<String, Object?> row,

@@ -97,6 +97,9 @@ WHERE NOT EXISTS (SELECT 1 FROM budgets)
       if (oldVersion < 5) {
         await LedgerMigration.migrateSavingsWalletFields(db);
       }
+      if (oldVersion < 6) {
+        await LedgerMigration.migrateSavingsGoalVisualFields(db);
+      }
     }
 
     final options = OpenDatabaseOptions(

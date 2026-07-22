@@ -4,6 +4,7 @@ import '../models/related_item_option.dart';
 import '../models/savings_goal_model.dart';
 import '../models/wallet_model.dart';
 import '../models/wallet_movement.dart';
+import '../utils/currency_utils.dart';
 import 'ledger_service.dart';
 
 class SavingsService {
@@ -33,9 +34,16 @@ class SavingsService {
 SELECT g.id, g.name, g.target_amount, g.currency, c.name AS category_name
 FROM savings_goals g
 JOIN categories c ON c.id = g.category_id
-WHERE g.is_active = 1 AND g.category_id = ? AND g.currency = ?
+WHERE g.is_active = 1 AND c.is_active = 1 AND c.type = 'savings'
+  AND g.category_id = ?
+  AND CASE UPPER(g.currency) WHEN 'PEN' THEN 'SOL' ELSE UPPER(g.currency) END = ?
+  AND (g.deadline IS NULL OR date(g.deadline) >= date(?))
 ORDER BY g.name COLLATE NOCASE
-''', [categoryId, currency]);
+''', [
+      categoryId,
+      normalizeCurrencyCode(currency),
+      DateTime.now().toIso8601String(),
+    ]);
     return rows
         .map((row) => RelatedItemOption(
               type: 'savings',
@@ -45,6 +53,29 @@ ORDER BY g.name COLLATE NOCASE
                   'Objetivo de ahorro · ${row['currency']} · ${row['category_name']}',
             ))
         .toList();
+  }
+
+  Future<List<SavingsGoalModel>> getCompatibleSavingsGoals({
+    required int savingsCategoryId,
+    required String currency,
+    DateTime? onDate,
+  }) async {
+    final db = await _database.database;
+    final rows = await db.rawQuery('''
+SELECT g.*
+FROM savings_goals g
+JOIN categories c ON c.id = g.category_id
+WHERE g.category_id = ?
+  AND g.is_active = 1 AND c.is_active = 1 AND c.type = 'savings'
+  AND CASE UPPER(g.currency) WHEN 'PEN' THEN 'SOL' ELSE UPPER(g.currency) END = ?
+  AND (g.deadline IS NULL OR date(g.deadline) >= date(?))
+ORDER BY g.name COLLATE NOCASE
+''', [
+      savingsCategoryId,
+      normalizeCurrencyCode(currency),
+      (onDate ?? DateTime.now()).toIso8601String(),
+    ]);
+    return rows.map(SavingsGoalModel.fromMap).toList();
   }
 
   Future<List<WalletMovement>> getWalletHistory(int walletId) async {
@@ -128,7 +159,8 @@ ORDER BY w.name ASC
       if (parentRows.isEmpty) {
         throw StateError('Parent account does not exist.');
       }
-      if (parentRows.first['currency'] != wallet.currency) {
+      if (!currenciesMatch(
+          parentRows.first['currency'] as String, wallet.currency)) {
         throw ArgumentError('Wallet currency must match its parent account.');
       }
       final data = wallet.toMap()
@@ -261,7 +293,7 @@ WHERE l.ledger_account_id=? AND e.status='posted' ''', [ledgerId]);
     if (goal.isEmpty ||
         goal.first['is_active'] != 1 ||
         goal.first['category_id'] != wallet.savingsCategoryId ||
-        goal.first['currency'] != wallet.currency) {
+        !currenciesMatch(goal.first['currency'] as String, wallet.currency)) {
       throw ArgumentError('La contrapartida no es compatible con la alcancía.');
     }
   }

@@ -8,6 +8,8 @@ class SavingsGoalModel {
     required this.currency,
     this.plannedMonthlyAmount,
     this.deadline,
+    this.iconKey,
+    this.colorHex,
     this.isActive = true,
     required this.createdAt,
   });
@@ -20,6 +22,8 @@ class SavingsGoalModel {
   final String currency;
   final double? plannedMonthlyAmount;
   final String? deadline;
+  final String? iconKey;
+  final String? colorHex;
   final bool isActive;
   final String createdAt;
 
@@ -34,6 +38,8 @@ class SavingsGoalModel {
         plannedMonthlyAmount:
             (map['planned_monthly_amount'] as num?)?.toDouble(),
         deadline: map['deadline'] as String?,
+        iconKey: map['icon_key'] as String?,
+        colorHex: map['color_hex'] as String?,
         isActive: (map['is_active'] as int) == 1,
         createdAt: map['created_at'] as String,
       );
@@ -47,6 +53,8 @@ class SavingsGoalModel {
         'currency': currency,
         'planned_monthly_amount': plannedMonthlyAmount,
         'deadline': deadline,
+        'icon_key': iconKey,
+        'color_hex': colorHex,
         'is_active': isActive ? 1 : 0,
         'created_at': createdAt,
       };
@@ -60,6 +68,8 @@ class SavingsGoalModel {
     String? currency,
     double? plannedMonthlyAmount,
     String? deadline,
+    String? iconKey,
+    String? colorHex,
     bool? isActive,
     String? createdAt,
   }) {
@@ -72,6 +82,8 @@ class SavingsGoalModel {
       currency: currency ?? this.currency,
       plannedMonthlyAmount: plannedMonthlyAmount ?? this.plannedMonthlyAmount,
       deadline: deadline ?? this.deadline,
+      iconKey: iconKey ?? this.iconKey,
+      colorHex: colorHex ?? this.colorHex,
       isActive: isActive ?? this.isActive,
       createdAt: createdAt ?? this.createdAt,
     );

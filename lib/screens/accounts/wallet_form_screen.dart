@@ -12,6 +12,9 @@ import '../../widgets/common/app_card.dart';
 import '../../widgets/common/app_scaffold.dart';
 import '../../widgets/inputs/app_dropdown_field.dart';
 import '../../widgets/inputs/app_text_input.dart';
+import '../../widgets/inputs/color_palette_field.dart';
+import '../../widgets/inputs/savings_icon_palette_field.dart';
+import 'savings_goal_form_screen.dart';
 
 class WalletFormScreen extends StatefulWidget {
   const WalletFormScreen({super.key, required this.account, this.initial});
@@ -28,9 +31,11 @@ class _WalletFormScreenState extends State<WalletFormScreen> {
   late Future<_WalletData> _dataFuture;
   CategoryModel? _category;
   SavingsGoalModel? _goal;
-  String _icon = 'piggy';
+  String _icon = 'savings_general';
   String _color = '#7C3AED';
   bool _saving = false;
+  bool _loadingGoals = false;
+  List<SavingsGoalModel> _goals = const [];
 
   @override
   void initState() {
@@ -44,12 +49,12 @@ class _WalletFormScreenState extends State<WalletFormScreen> {
 
   Future<_WalletData> _load() async {
     final categories = await CategoryService().getCategoriesByType('savings');
-    final goals = await SavingsService().getAllSavingsGoals();
     if (widget.initial != null) {
       _category = _findCategory(categories, widget.initial!.savingsCategoryId);
-      _goal = _findGoal(goals, widget.initial!.savingsItemId);
+      await _refreshGoals(notify: false);
+      _goal = _findGoal(_goals, widget.initial!.savingsItemId);
     }
-    return _WalletData(categories, goals);
+    return _WalletData(categories);
   }
 
   @override
@@ -70,11 +75,6 @@ class _WalletFormScreenState extends State<WalletFormScreen> {
               return const Center(child: CircularProgressIndicator());
             }
             final data = snapshot.data!;
-            final goals = data.goals
-                .where((goal) =>
-                    goal.categoryId == _category?.id &&
-                    goal.currency == widget.account.currency)
-                .toList();
             return AppCard(
               child: Column(
                 children: [
@@ -93,21 +93,35 @@ class _WalletFormScreenState extends State<WalletFormScreen> {
                     items: data.categories,
                     itemLabel: (item) => item.name,
                     value: _category,
-                    onChanged: (value) => setState(() {
-                      _category = value;
-                      _goal = null;
-                    }),
+                    onChanged: (value) async {
+                      setState(() {
+                        _category = value;
+                        _goal = null;
+                      });
+                      await _refreshGoals();
+                    },
                     validator: (value) =>
                         value == null ? 'Selecciona una categoría' : null,
                   ),
                   const SizedBox(height: 14),
-                  if (goals.isEmpty)
-                    const Text(
-                        'No hay objetivos de ahorro activos compatibles.')
+                  if (_loadingGoals)
+                    const LinearProgressIndicator()
+                  else if (_goals.isEmpty)
+                    Column(
+                      children: [
+                        const Text(
+                            'No hay objetivos de ahorro activos compatibles.'),
+                        TextButton.icon(
+                          onPressed: _category == null ? null : _createGoal,
+                          icon: const Icon(Icons.add),
+                          label: const Text('Crear objetivo de ahorro'),
+                        ),
+                      ],
+                    )
                   else
                     AppDropdownField<SavingsGoalModel>(
                       label: 'Contrapartida de ahorro',
-                      items: goals,
+                      items: _goals,
                       itemLabel: (item) => '${item.name} · ${item.currency}',
                       selectedItemLabel: (item) => item.name,
                       value: _goal,
@@ -116,22 +130,16 @@ class _WalletFormScreenState extends State<WalletFormScreen> {
                           value == null ? 'Selecciona un objetivo' : null,
                     ),
                   const SizedBox(height: 14),
-                  AppDropdownField<String>(
-                    label: 'Icono',
-                    items: const ['piggy', 'savings', 'wallet'],
-                    itemLabel: (item) => item,
+                  SavingsIconPaletteField(
                     value: _icon,
-                    onChanged: (value) =>
-                        setState(() => _icon = value ?? _icon),
+                    color: colorFromHex(_color),
+                    onChanged: (value) => setState(() => _icon = value),
                   ),
                   const SizedBox(height: 14),
-                  AppDropdownField<String>(
+                  ColorPaletteField(
                     label: 'Color',
-                    items: const ['#7C3AED', '#005FD1', '#22C55E', '#F97316'],
-                    itemLabel: (item) => item,
                     value: _color,
-                    onChanged: (value) =>
-                        setState(() => _color = value ?? _color),
+                    onChanged: (value) => setState(() => _color = value),
                   ),
                   const SizedBox(height: 20),
                   AppPrimaryButton(
@@ -194,10 +202,37 @@ class _WalletFormScreenState extends State<WalletFormScreen> {
       items.where((item) => item.id == id).firstOrNull;
   SavingsGoalModel? _findGoal(List<SavingsGoalModel> items, int? id) =>
       items.where((item) => item.id == id).firstOrNull;
+
+  Future<void> _refreshGoals({bool notify = true}) async {
+    final categoryId = _category?.id;
+    if (categoryId == null) {
+      _goals = const [];
+      return;
+    }
+    if (notify && mounted) setState(() => _loadingGoals = true);
+    final goals = await SavingsService().getCompatibleSavingsGoals(
+      savingsCategoryId: categoryId,
+      currency: widget.account.currency,
+    );
+    if (!mounted && notify) return;
+    _goals = goals;
+    if (!_goals.any((item) => item.id == _goal?.id)) _goal = null;
+    if (notify) setState(() => _loadingGoals = false);
+  }
+
+  Future<void> _createGoal() async {
+    final created = await Navigator.of(context).push<bool>(MaterialPageRoute(
+      builder: (_) => SavingsGoalFormScreen(
+        initialCategory: _category,
+        initialCurrency: widget.account.currency,
+      ),
+    ));
+    if (!mounted || created != true) return;
+    await _refreshGoals();
+  }
 }
 
 class _WalletData {
-  const _WalletData(this.categories, this.goals);
+  const _WalletData(this.categories);
   final List<CategoryModel> categories;
-  final List<SavingsGoalModel> goals;
 }

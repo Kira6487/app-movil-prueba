@@ -2,6 +2,7 @@ import '../database/app_database.dart';
 import '../models/transfer_model.dart';
 import '../models/ledger_models.dart';
 import '../utils/money_utils.dart';
+import '../utils/currency_utils.dart';
 import 'ledger_service.dart';
 
 class TransferService {
@@ -274,8 +275,13 @@ class TransferService {
 SELECT g.id FROM savings_goals g
 JOIN categories c ON c.id = g.category_id
 WHERE g.id = ? AND g.is_active = 1 AND c.type = 'savings'
-  AND g.category_id = ? AND g.currency = ?
-''', [itemId, rows.first['savings_category_id'], rows.first['currency']]);
+  AND g.category_id = ?
+  AND CASE UPPER(g.currency) WHEN 'PEN' THEN 'SOL' ELSE UPPER(g.currency) END = ?
+''', [
+      itemId,
+      rows.first['savings_category_id'],
+      normalizeCurrencyCode(rows.first['currency'] as String),
+    ]);
     if (item.isEmpty) {
       throw ArgumentError(
           'La contrapartida debe ser un objetivo de ahorro compatible.');
